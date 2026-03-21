@@ -142,93 +142,90 @@ def save_img_cache(cache):
         json.dump(cache, f, ensure_ascii=False)
 
 def get_icecat_img(brand, product_code, cache):
-    """
-    Consulta la API de Icecat Live para obtener la URL de imagen del producto.
-    Devuelve (thumb_url, high_url) o (None, None) si no se encuentra.
-    """
+    """Consulta Icecat Live y guarda thumb, high, gallery, desc, specs."""
     if not ICECAT_USER:
         return None, None
 
     cache_key = f"{brand.lower()}|{product_code.lower()}"
-
-    # Cache hit
     if cache_key in cache:
         cached = cache[cache_key]
-        if cached is None:
-            return None, None
+        if cached is None: return None, None
         return cached.get('thumb'), cached.get('high')
 
-    brand_icecat = brand.strip().title()
-    code_icecat  = product_code.strip()
-
-    # Icecat Live API — UserName en URL, sin Basic Auth
-    # Documentación: https://iceclog.com/manual-for-icecat-json-product-requests/
     url = (f"https://live.icecat.biz/api/"
            f"?UserName={ICECAT_USER}"
            f"&Language=EN"
-           f"&Brand={brand_icecat}"
-           f"&ProductCode={code_icecat}")
-
+           f"&Brand={brand.strip().title()}"
+           f"&ProductCode={product_code.strip()}")
     try:
         req = Request(url, headers={"User-Agent": "Infofase-Bot/3.0"})
         with urlopen(req, timeout=10) as r:
             raw  = r.read().decode("utf-8", errors="replace")
             data = json.loads(raw)
 
-        # Debug: log first response to understand structure
         if not hasattr(get_icecat_img, '_logged'):
-            log(f"  DEBUG Icecat response keys: {list(data.keys())}")
-            # Log truncated response
-            log(f"  DEBUG sample: {raw[:300]}")
+            log(f"  DEBUG keys: {list(data.keys())}")
             get_icecat_img._logged = True
 
-        # Try new API format: data.Image / data.Gallery
-        img_node = data.get("data", data)  # some versions wrap in "data"
-        if isinstance(img_node, dict):
-            img_data = img_node.get("Image", {}) or {}
-        else:
-            img_data = {}
+        # Navigate response — try data.Image, then msg.Image
+        root = data.get("data") or data.get("msg") or {}
+        if isinstance(root, str): root = {}
 
-        thumb = img_data.get("ThumbPic", "") or img_data.get("Pic75x75", "")
-        high  = img_data.get("HighPic",  "") or img_data.get("Pic500x500", "")
+        # Main image
+        img_node = root.get("Image") or {}
+        thumb = img_node.get("ThumbPic","") or img_node.get("Pic75x75","")
+        high  = img_node.get("HighPic", "") or img_node.get("Pic500x500","")
 
-        # Fallback: try msg.Image (older format)
-        if not thumb:
-            msg = data.get("msg", {}) or {}
-            img_data2 = msg.get("Image", {}) or {}
-            thumb = img_data2.get("ThumbPic", "")
-            high  = img_data2.get("HighPic",  "")
+        # Gallery
+        gallery_raw = root.get("Gallery") or []
+        gallery = []
+        for g in gallery_raw[:6]:  # max 6 gallery images
+            u = g.get("HighPic","") or g.get("LowPic","")
+            if u and u != high: gallery.append(u)
 
-        # Fallback: Gallery
-        if not thumb:
-            for key in ("Gallery", "gallery"):
-                gallery = (data.get(key) or
-                           data.get("data", {}).get(key) or
-                           data.get("msg", {}).get(key) or [])
-                if gallery and isinstance(gallery, list):
-                    first = gallery[0]
-                    thumb = first.get("ThumbPic", "") or first.get("thumb", "")
-                    high  = first.get("HighPic",  "") or first.get("high",  "")
-                    if thumb: break
+        # Short description
+        desc = ""
+        gi = root.get("GeneralInfo") or {}
+        desc_node = gi.get("Description") or {}
+        if isinstance(desc_node, dict):
+            desc = desc_node.get("ShortDesc","") or ""
+        if not desc:
+            desc = gi.get("GeneratedIntTitle",{}).get("Value","") if isinstance(gi.get("GeneratedIntTitle"),dict) else ""
+
+        # Specs (FeaturesGroups → top 20 features)
+        specs = []
+        for fg in (root.get("FeaturesGroups") or []):
+            for feat in (fg.get("Features") or [])[:20]:
+                fname = (feat.get("Feature") or {}).get("Name","")
+                fval  = feat.get("Value","") or feat.get("LocalValue","")
+                funit = (feat.get("Feature") or {}).get("Measure",{})
+                if isinstance(funit, dict): funit = funit.get("Signs",{}).get("_","") 
+                else: funit = ""
+                if fname and fval:
+                    specs.append({"n": fname, "v": str(fval) + (" "+funit if funit else "")})
+            if len(specs) >= 20: break
 
         if thumb or high:
-            cache[cache_key] = {"thumb": thumb, "high": high}
+            entry = {"thumb": thumb, "high": high}
+            if gallery: entry["gallery"] = gallery
+            if desc:    entry["desc"]    = desc[:300]
+            if specs:   entry["specs"]   = specs[:20]
+            cache[cache_key] = entry
             return thumb, high
         else:
             cache[cache_key] = None
             return None, None
 
     except HTTPError as e:
-        if e.code in (404, 403):
-            cache[cache_key] = None
+        if e.code in (404, 403): cache[cache_key] = None
         return None, None
     except Exception as ex:
         if not hasattr(get_icecat_img, '_err_logged'):
-            log(f"  DEBUG Icecat error: {ex}")
+            log(f"  DEBUG error: {ex}")
             get_icecat_img._err_logged = True
         return None, None
 
-# ── Process CSV ───────────────────────────────────────────────
+
 def process_csv(text, img_cache):
     lines = text.splitlines()
     delim = ";" if lines[0].count(";") > lines[0].count(",") else ","
@@ -287,9 +284,14 @@ def process_csv(text, img_cache):
             else:
                 thumb, high = None, None
 
-            if thumb:
-                p["img"]  = thumb
-                p["imgH"] = high
+            if thumb or high:
+                p["img"]  = thumb or high
+                if high:  p["imgH"] = high
+                # Extended Icecat data
+                cached_entry = cache.get(cache_key, {}) or {}
+                if cached_entry.get("gallery"): p["gallery"] = cached_entry["gallery"]
+                if cached_entry.get("desc"):    p["desc"]    = cached_entry["desc"]
+                if cached_entry.get("specs"):   p["specs"]   = cached_entry["specs"]
                 img_found += 1
             else:
                 img_miss += 1
@@ -357,23 +359,10 @@ def update_zona_apple(html, csv_rows):
 
 # ── Update HTML ───────────────────────────────────────────────
 def update_html(products):
-    # Use index.html if template has empty products (W10= = [])
-    tmpl = TEMPLATE
-    if not os.path.exists(tmpl):
-        tmpl = "index.html"
-    if not os.path.exists(tmpl):
-        log(f"ERROR: ni template.html ni index.html encontrados"); return False
-    with open(tmpl, encoding="utf-8", errors="replace") as f:
+    if not os.path.exists(TEMPLATE):
+        log(f"ERROR: {TEMPLATE} no encontrado"); return False
+    with open(TEMPLATE, encoding="utf-8", errors="replace") as f:
         html = f.read()
-    # If template has empty products placeholder, also try index.html for fresher base
-    import base64 as _b64
-    tg_check = re.search(r"var _TG = '([A-Za-z0-9+/=]+)'", html)
-    if tg_check:
-        tg_decoded = _b64.b64decode(tg_check.group(1)).decode('ascii', errors='replace')
-        if 'W10=' in tg_decoded and os.path.exists("index.html") and tmpl != "index.html":
-            log("  Template tiene productos vacíos, usando index.html como base")
-            with open("index.html", encoding="utf-8", errors="replace") as f:
-                html = f.read()
 
     new_prods_b64 = base64.b64encode(
         json.dumps(products, ensure_ascii=False,
