@@ -88,3 +88,20 @@
 [2026-03-21 20:33:41]   index.html: 30.6MB | tienda: 2921 | Apple: 593
 [2026-03-21 20:33:41] Completado OK
 [2026-03-21 20:33:41] ==================================================
+[2026-03-21 20:35:56] ==================================================
+[2026-03-21 20:35:56] Infofase catalog updater v3 — con imágenes Icecat
+[2026-03-21 20:35:56]   Cache: 494 entradas válidas (336 nulos purgados)
+[2026-03-21 20:35:56] Descargando https://infofase.com/tienda/megastore.csv
+[2026-03-21 20:35:57]   CSV: 509KB (utf-8-sig)
+[2026-03-21 20:35:58]   DEBUG Icecat error: URL can't contain control characters. '/api/?UserName=luis_1980&Language=EN&Brand=Pro Basic&ProductCode=0147' (found at least ' ')
+[2026-03-21 20:38:29]   DEBUG Icecat response keys: ['msg', 'data']
+[2026-03-21 20:38:29]   DEBUG sample: {"msg":"OK","data":{"GeneralInfo":{"IcecatId":123294,"ReleaseDate":"","EndOfLifeDate":"","Title":"APC Back-UPS BK650EI - 650VA, 4x C13 output, USB","TitleInfo":{"GeneratedIntTitle":"APC Back-UPS uninterruptible power supply (UPS)","GeneratedLocalTitle":{"Value":"APC Back-UPS uninterruptible power su
+[2026-03-21 20:39:43]   Procesados: 2921 | descartados: 381
+[2026-03-21 20:39:43]   Imágenes: 559 encontradas | 1780 sin imagen | 582 Apple (skip)
+[2026-03-21 20:39:43]   Nuevas consultas Icecat: 500
+[2026-03-21 20:39:43]   Cache guardado: 967 entradas
+[2026-03-21 20:39:43]   Modo: web integrada (_TG)
+[2026-03-21 20:39:44]   ZA: 593/593 productos Apple actualizados
+[2026-03-21 20:39:45]   index.html: 30.6MB | tienda: 2921 | Apple: 593
+[2026-03-21 20:39:45] Completado OK
+[2026-03-21 20:39:45] ==================================================
