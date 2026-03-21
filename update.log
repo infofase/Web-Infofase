@@ -139,3 +139,71 @@
 [2026-03-21 20:53:10]   index.html: 30.6MB | tienda: 2921 | Apple: 593
 [2026-03-21 20:53:10] Completado OK
 [2026-03-21 20:53:10] ==================================================
+[2026-03-21 20:57:22] ==================================================
+[2026-03-21 20:57:22] Infofase catalog updater v3 — con imágenes Icecat
+[2026-03-21 20:57:22]   Cache: 644 entradas válidas (444 nulos purgados)
+[2026-03-21 20:57:22] Descargando https://infofase.com/tienda/megastore.csv
+[2026-03-21 20:57:23]   CSV: 509KB (utf-8-sig)
+[2026-03-21 20:57:24]   DEBUG Icecat error: URL can't contain control characters. '/api/?UserName=luis_1980&Language=EN&Brand=Pro Basic&ProductCode=0147' (found at least ' ')
+[2026-03-21 21:00:13]   DEBUG Icecat response keys: ['msg', 'data']
+[2026-03-21 21:00:13]   DEBUG sample: {"msg":"OK","data":{"GeneralInfo":{"IcecatId":33320523,"ReleaseDate":"","EndOfLifeDate":"","Title":"Conceptronic 2-Port USB Car Charger Kit","TitleInfo":{"GeneratedIntTitle":"Conceptronic CUSBCAR2AKIT mobile device charger","GeneratedLocalTitle":{"Value":"Conceptronic CUSBCAR2AKIT mobile device char
+[2026-03-21 21:00:25]   Procesados: 2921 | descartados: 381
+[2026-03-21 21:00:25]   Imágenes: 662 encontradas | 1677 sin imagen | 582 Apple (skip)
+[2026-03-21 21:00:25]   Nuevas consultas Icecat: 500
+[2026-03-21 21:00:25]   Cache guardado: 1114 entradas
+[2026-03-21 21:00:25]   Modo: web integrada (_TG)
+[2026-03-21 21:00:26]   ZA: 593/593 productos Apple actualizados
+[2026-03-21 21:00:27]   index.html: 30.6MB | tienda: 2921 | Apple: 593
+[2026-03-21 21:00:27] Completado OK
+[2026-03-21 21:00:27] ==================================================
+[2026-03-21 21:18:54] ==================================================
+[2026-03-21 21:18:54] Infofase catalog updater v3 — con imágenes Icecat
+[2026-03-21 21:18:54]   Cache: 662 entradas válidas (452 nulos purgados)
+[2026-03-21 21:18:54] Descargando https://infofase.com/tienda/megastore.csv
+[2026-03-21 21:18:56]   CSV: 509KB (utf-8-sig)
+[2026-03-21 21:18:57]   DEBUG Icecat error: URL can't contain control characters. '/api/?UserName=luis_1980&Language=EN&Brand=Pro Basic&ProductCode=0147' (found at least ' ')
+[2026-03-21 21:22:49]   DEBUG Icecat response keys: ['msg', 'data']
+[2026-03-21 21:22:49]   DEBUG sample: {"msg":"OK","data":{"GeneralInfo":{"IcecatId":117189859,"ReleaseDate":"","EndOfLifeDate":"","Title":"Brother DCP-L2627DWE EcoPro Ready 3-in-1 Mono Laser Printer","TitleInfo":{"GeneratedIntTitle":"Brother DCP-L2627DWE multifunction printer","GeneratedLocalTitle":{"Value":"Brother DCP-L2627DWE multifu
+[2026-03-21 21:22:57]   Procesados: 2921 | descartados: 381
+[2026-03-21 21:22:57]   Imágenes: 671 encontradas | 1668 sin imagen | 582 Apple (skip)
+[2026-03-21 21:22:57]   Nuevas consultas Icecat: 500
+[2026-03-21 21:22:57]   Cache guardado: 1126 entradas
+[2026-03-21 21:22:58]   Modo: web integrada (_TG)
+[2026-03-21 21:22:58]   ZA: 593/593 productos Apple actualizados
+[2026-03-21 21:22:59]   index.html: 30.6MB | tienda: 2921 | Apple: 593
+[2026-03-21 21:22:59] Completado OK
+[2026-03-21 21:22:59] ==================================================
+[2026-03-21 21:29:15] ==================================================
+[2026-03-21 21:29:15] Infofase catalog updater v3 — con imágenes Icecat
+[2026-03-21 21:29:15]   Cache: 671 entradas válidas (455 nulos purgados)
+[2026-03-21 21:29:15] Descargando https://infofase.com/tienda/megastore.csv
+[2026-03-21 21:29:16]   CSV: 509KB (utf-8-sig)
+[2026-03-21 21:29:18]   DEBUG Icecat error: URL can't contain control characters. '/api/?UserName=luis_1980&Language=EN&Brand=Pro Basic&ProductCode=0147' (found at least ' ')
+[2026-03-21 21:33:09]   DEBUG Icecat response keys: ['msg', 'data']
+[2026-03-21 21:33:09]   DEBUG sample: {"msg":"OK","data":{"GeneralInfo":{"IcecatId":31911,"ReleaseDate":"","EndOfLifeDate":"","Title":"D-Link DES-1024D Unmanaged","TitleInfo":{"GeneratedIntTitle":"D-Link DES-1024D","GeneratedLocalTitle":{"Value":"D-Link DES-1024D Unmanaged","Language":"EN"},"BrandLocalTitle":{"Value":"","Language":"EN"}
+[2026-03-21 21:33:15]   Procesados: 2921 | descartados: 381
+[2026-03-21 21:33:15]   Imágenes: 679 encontradas | 1660 sin imagen | 582 Apple (skip)
+[2026-03-21 21:33:15]   Nuevas consultas Icecat: 500
+[2026-03-21 21:33:15]   Cache guardado: 1134 entradas
+[2026-03-21 21:33:15]   Modo: web integrada (_TG)
+[2026-03-21 21:33:16]   ZA: 593/593 productos Apple actualizados
+[2026-03-21 21:33:16]   index.html: 30.6MB | tienda: 2921 | Apple: 593
+[2026-03-21 21:33:16] Completado OK
+[2026-03-21 21:33:16] ==================================================
+[2026-03-21 21:37:52] ==================================================
+[2026-03-21 21:37:52] Infofase catalog updater v3 — con imágenes Icecat
+[2026-03-21 21:37:52]   Cache: 679 entradas válidas (455 nulos purgados)
+[2026-03-21 21:37:52] Descargando https://infofase.com/tienda/megastore.csv
+[2026-03-21 21:37:53]   CSV: 509KB (utf-8-sig)
+[2026-03-21 21:37:54]   DEBUG Icecat error: URL can't contain control characters. '/api/?UserName=luis_1980&Language=EN&Brand=Pro Basic&ProductCode=0147' (found at least ' ')
+[2026-03-21 21:40:52]   DEBUG Icecat response keys: ['msg', 'data']
+[2026-03-21 21:40:52]   DEBUG sample: {"msg":"OK","data":{"GeneralInfo":{"IcecatId":71742416,"ReleaseDate":"","EndOfLifeDate":"","Title":"D-Link DGS-1024D network switch Unmanaged Gigabit Ethernet (10/100/1000) 1U Black, Silver","TitleInfo":{"GeneratedIntTitle":"D-Link DGS-1024D network switch","GeneratedLocalTitle":{"Value":"D-Link DGS
+[2026-03-21 21:40:57]   Procesados: 2921 | descartados: 381
+[2026-03-21 21:40:57]   Imágenes: 684 encontradas | 1655 sin imagen | 582 Apple (skip)
+[2026-03-21 21:40:57]   Nuevas consultas Icecat: 500
+[2026-03-21 21:40:57]   Cache guardado: 1142 entradas
+[2026-03-21 21:40:57]   Modo: web integrada (_TG)
+[2026-03-21 21:40:58]   ZA: 593/593 productos Apple actualizados
+[2026-03-21 21:40:59]   index.html: 30.6MB | tienda: 2921 | Apple: 593
+[2026-03-21 21:40:59] Completado OK
+[2026-03-21 21:40:59] ==================================================
