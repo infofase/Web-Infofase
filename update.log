@@ -122,3 +122,20 @@
 [2026-03-21 20:47:11]   index.html: 30.6MB | tienda: 2921 | Apple: 593
 [2026-03-21 20:47:11] Completado OK
 [2026-03-21 20:47:11] ==================================================
+[2026-03-21 20:48:57] ==================================================
+[2026-03-21 20:48:57] Infofase catalog updater v3 — con imágenes Icecat
+[2026-03-21 20:48:57]   Cache: 618 entradas válidas (413 nulos purgados)
+[2026-03-21 20:48:57] Descargando https://infofase.com/tienda/megastore.csv
+[2026-03-21 20:48:58]   CSV: 509KB (utf-8-sig)
+[2026-03-21 20:49:00]   DEBUG Icecat error: URL can't contain control characters. '/api/?UserName=luis_1980&Language=EN&Brand=Pro Basic&ProductCode=0147' (found at least ' ')
+[2026-03-21 20:52:34]   DEBUG Icecat response keys: ['msg', 'data']
+[2026-03-21 20:52:34]   DEBUG sample: {"msg":"OK","data":{"GeneralInfo":{"IcecatId":4791146,"ReleaseDate":"01-07-2010","EndOfLifeDate":"30-11-2027","Title":"HP 301 Black Original Ink Cartridge","TitleInfo":{"GeneratedIntTitle":"HP 301 Black Original ink cartridge","GeneratedLocalTitle":{"Value":"HP 301 Black Original ink cartridge 1 pc(
+[2026-03-21 20:53:09]   Procesados: 2921 | descartados: 381
+[2026-03-21 20:53:09]   Imágenes: 644 encontradas | 1695 sin imagen | 582 Apple (skip)
+[2026-03-21 20:53:09]   Nuevas consultas Icecat: 500
+[2026-03-21 20:53:09]   Cache guardado: 1088 entradas
+[2026-03-21 20:53:09]   Modo: web integrada (_TG)
+[2026-03-21 20:53:09]   ZA: 593/593 productos Apple actualizados
+[2026-03-21 20:53:10]   index.html: 30.6MB | tienda: 2921 | Apple: 593
+[2026-03-21 20:53:10] Completado OK
+[2026-03-21 20:53:10] ==================================================
