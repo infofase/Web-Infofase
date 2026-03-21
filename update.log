@@ -139,3 +139,20 @@
 [2026-03-21 20:53:10]   index.html: 30.6MB | tienda: 2921 | Apple: 593
 [2026-03-21 20:53:10] Completado OK
 [2026-03-21 20:53:10] ==================================================
+[2026-03-21 20:57:22] ==================================================
+[2026-03-21 20:57:22] Infofase catalog updater v3 — con imágenes Icecat
+[2026-03-21 20:57:22]   Cache: 644 entradas válidas (444 nulos purgados)
+[2026-03-21 20:57:22] Descargando https://infofase.com/tienda/megastore.csv
+[2026-03-21 20:57:23]   CSV: 509KB (utf-8-sig)
+[2026-03-21 20:57:24]   DEBUG Icecat error: URL can't contain control characters. '/api/?UserName=luis_1980&Language=EN&Brand=Pro Basic&ProductCode=0147' (found at least ' ')
+[2026-03-21 21:00:13]   DEBUG Icecat response keys: ['msg', 'data']
+[2026-03-21 21:00:13]   DEBUG sample: {"msg":"OK","data":{"GeneralInfo":{"IcecatId":33320523,"ReleaseDate":"","EndOfLifeDate":"","Title":"Conceptronic 2-Port USB Car Charger Kit","TitleInfo":{"GeneratedIntTitle":"Conceptronic CUSBCAR2AKIT mobile device charger","GeneratedLocalTitle":{"Value":"Conceptronic CUSBCAR2AKIT mobile device char
+[2026-03-21 21:00:25]   Procesados: 2921 | descartados: 381
+[2026-03-21 21:00:25]   Imágenes: 662 encontradas | 1677 sin imagen | 582 Apple (skip)
+[2026-03-21 21:00:25]   Nuevas consultas Icecat: 500
+[2026-03-21 21:00:25]   Cache guardado: 1114 entradas
+[2026-03-21 21:00:25]   Modo: web integrada (_TG)
+[2026-03-21 21:00:26]   ZA: 593/593 productos Apple actualizados
+[2026-03-21 21:00:27]   index.html: 30.6MB | tienda: 2921 | Apple: 593
+[2026-03-21 21:00:27] Completado OK
+[2026-03-21 21:00:27] ==================================================
