@@ -152,11 +152,14 @@ def get_icecat_img(brand, product_code, cache):
         if cached is None: return None, None
         return cached.get('thumb'), cached.get('high')
 
+    from urllib.parse import quote
+    brand_enc = quote(brand.strip().title())
+    code_enc  = quote(product_code.strip())
     url = (f"https://live.icecat.biz/api/"
            f"?UserName={ICECAT_USER}"
            f"&Language=EN"
-           f"&Brand={brand.strip().title()}"
-           f"&ProductCode={product_code.strip()}")
+           f"&Brand={brand_enc}"
+           f"&ProductCode={code_enc}")
     try:
         req = Request(url, headers={"User-Agent": "Infofase-Bot/3.0"})
         with urlopen(req, timeout=10) as r:
@@ -288,7 +291,7 @@ def process_csv(text, img_cache):
                 p["img"]  = thumb or high
                 if high:  p["imgH"] = high
                 # Extended Icecat data
-                cached_entry = cache.get(cache_key, {}) or {}
+                cached_entry = img_cache.get(cache_key, {}) or {}
                 if cached_entry.get("gallery"): p["gallery"] = cached_entry["gallery"]
                 if cached_entry.get("desc"):    p["desc"]    = cached_entry["desc"]
                 if cached_entry.get("specs"):   p["specs"]   = cached_entry["specs"]
