@@ -105,3 +105,20 @@
 [2026-03-21 20:39:45]   index.html: 30.6MB | tienda: 2921 | Apple: 593
 [2026-03-21 20:39:45] Completado OK
 [2026-03-21 20:39:45] ==================================================
+[2026-03-21 20:42:50] ==================================================
+[2026-03-21 20:42:50] Infofase catalog updater v3 — con imágenes Icecat
+[2026-03-21 20:42:50]   Cache: 559 entradas válidas (408 nulos purgados)
+[2026-03-21 20:42:50] Descargando https://infofase.com/tienda/megastore.csv
+[2026-03-21 20:42:52]   CSV: 509KB (utf-8-sig)
+[2026-03-21 20:42:53]   DEBUG Icecat error: URL can't contain control characters. '/api/?UserName=luis_1980&Language=EN&Brand=Pro Basic&ProductCode=0147' (found at least ' ')
+[2026-03-21 20:46:22]   DEBUG Icecat response keys: ['msg', 'data']
+[2026-03-21 20:46:22]   DEBUG sample: {"msg":"OK","data":{"GeneralInfo":{"IcecatId":74287711,"ReleaseDate":"01-05-2008","EndOfLifeDate":"30-11-2027","Title":"HP 64A Black Original LaserJet Toner Cartridge","TitleInfo":{"GeneratedIntTitle":"HP 64A Black Original LaserJet toner cartridge","GeneratedLocalTitle":{"Value":"HP 64A Black Origi
+[2026-03-21 20:47:09]   Procesados: 2921 | descartados: 381
+[2026-03-21 20:47:09]   Imágenes: 618 encontradas | 1721 sin imagen | 582 Apple (skip)
+[2026-03-21 20:47:09]   Nuevas consultas Icecat: 500
+[2026-03-21 20:47:09]   Cache guardado: 1031 entradas
+[2026-03-21 20:47:09]   Modo: web integrada (_TG)
+[2026-03-21 20:47:10]   ZA: 593/593 productos Apple actualizados
+[2026-03-21 20:47:11]   index.html: 30.6MB | tienda: 2921 | Apple: 593
+[2026-03-21 20:47:11] Completado OK
+[2026-03-21 20:47:11] ==================================================
