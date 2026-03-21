@@ -17,7 +17,7 @@ from urllib.parse import urlencode
 from datetime import datetime
 
 CSV_URL   = "https://infofase.com/tienda/megastore.csv"
-TEMPLATE  = "template.html"
+TEMPLATE  = "template.html" if os.path.exists("template.html") else "index.html"
 OUTPUT    = "index.html"
 LOG       = "update.log"
 IMG_CACHE = "img_cache.json"   # cache de icecat_id ya resueltos
@@ -357,10 +357,23 @@ def update_zona_apple(html, csv_rows):
 
 # ── Update HTML ───────────────────────────────────────────────
 def update_html(products):
-    if not os.path.exists(TEMPLATE):
-        log(f"ERROR: {TEMPLATE} no encontrado"); return False
-    with open(TEMPLATE, encoding="utf-8", errors="replace") as f:
+    # Use index.html if template has empty products (W10= = [])
+    tmpl = TEMPLATE
+    if not os.path.exists(tmpl):
+        tmpl = "index.html"
+    if not os.path.exists(tmpl):
+        log(f"ERROR: ni template.html ni index.html encontrados"); return False
+    with open(tmpl, encoding="utf-8", errors="replace") as f:
         html = f.read()
+    # If template has empty products placeholder, also try index.html for fresher base
+    import base64 as _b64
+    tg_check = re.search(r"var _TG = '([A-Za-z0-9+/=]+)'", html)
+    if tg_check:
+        tg_decoded = _b64.b64decode(tg_check.group(1)).decode('ascii', errors='replace')
+        if 'W10=' in tg_decoded and os.path.exists("index.html") and tmpl != "index.html":
+            log("  Template tiene productos vacíos, usando index.html como base")
+            with open("index.html", encoding="utf-8", errors="replace") as f:
+                html = f.read()
 
     new_prods_b64 = base64.b64encode(
         json.dumps(products, ensure_ascii=False,
@@ -371,7 +384,7 @@ def update_html(products):
     pat_direct = r'(var ALL = JSON\.parse\((?:new TextDecoder\(\)\.decode\(Uint8Array\.from\(atob\(|atob\()")[A-Za-z0-9+/=]+'
     html2, n = re.subn(
         pat_direct,
-        lambda m: m.group(1) + '"' + new_prods_b64,
+        lambda m: m.group(1) + new_prods_b64,
         html, count=1)
 
     if n > 0:
@@ -386,7 +399,7 @@ def update_html(products):
         pat_inner = r'(JSON\.parse\((?:new TextDecoder\(\)\.decode\(Uint8Array\.from\(atob\(|atob\()")[A-Za-z0-9+/=]+'
         tg_new, n2 = re.subn(
             pat_inner,
-            lambda m: m.group(1) + '"' + new_prods_b64,
+            lambda m: m.group(1) + new_prods_b64,
             tg_html, count=1)
         if n2 == 0:
             log("ERROR: patrón no encontrado dentro de _TG"); return False
