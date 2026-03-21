@@ -54,3 +54,20 @@
 [2026-03-21 20:16:31]   index.html: 30.4MB | tienda: 2921 | Apple: 593
 [2026-03-21 20:16:31] Completado OK
 [2026-03-21 20:16:31] ==================================================
+[2026-03-21 20:22:14] ==================================================
+[2026-03-21 20:22:14] Infofase catalog updater v3 — con imágenes Icecat
+[2026-03-21 20:22:14]   Cache: 0 entradas válidas (61 nulos purgados)
+[2026-03-21 20:22:14] Descargando https://infofase.com/tienda/megastore.csv
+[2026-03-21 20:22:15]   CSV: 509KB (utf-8-sig)
+[2026-03-21 20:22:17]   DEBUG Icecat error: URL can't contain control characters. '/api/?UserName=luis_1980&Language=EN&Brand=Pro Basic&ProductCode=0147' (found at least ' ')
+[2026-03-21 20:22:18]   DEBUG Icecat response keys: ['msg', 'data']
+[2026-03-21 20:22:18]   DEBUG sample: {"msg":"OK","data":{"GeneralInfo":{"IcecatId":616155,"ReleaseDate":"","EndOfLifeDate":"","Title":"Zebra Z-Perform 1000T thermal ribbon 450 m Black","TitleInfo":{"GeneratedIntTitle":"Zebra Z-Perform 1000T thermal ribbon","GeneratedLocalTitle":{"Value":"Zebra Z-Perform 1000T thermal ribbon 450 m Black
+[2026-03-21 20:27:49]   Procesados: 2921 | descartados: 381
+[2026-03-21 20:27:49]   Imágenes: 357 encontradas | 1982 sin imagen | 582 Apple (skip)
+[2026-03-21 20:27:49]   Nuevas consultas Icecat: 500
+[2026-03-21 20:27:49]   Cache guardado: 490 entradas
+[2026-03-21 20:27:49]   Modo: web integrada (_TG)
+[2026-03-21 20:27:50]   ZA: 593/593 productos Apple actualizados
+[2026-03-21 20:27:51]   index.html: 30.5MB | tienda: 2921 | Apple: 593
+[2026-03-21 20:27:51] Completado OK
+[2026-03-21 20:27:51] ==================================================
