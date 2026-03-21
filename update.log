@@ -207,3 +207,21 @@
 [2026-03-21 21:40:59]   index.html: 30.6MB | tienda: 2921 | Apple: 593
 [2026-03-21 21:40:59] Completado OK
 [2026-03-21 21:40:59] ==================================================
+[2026-03-21 22:03:19] ==================================================
+[2026-03-21 22:03:19] Infofase catalog updater v3 — con imágenes Icecat
+[2026-03-21 22:03:19]   Cache: 684 entradas válidas (458 nulos purgados)
+[2026-03-21 22:03:19] Descargando https://infofase.com/tienda/megastore.csv
+[2026-03-21 22:03:20]   CSV: 509KB (utf-8-sig)
+[2026-03-21 22:03:22]   DEBUG Icecat error: URL can't contain control characters. '/api/?UserName=luis_1980&Language=EN&Brand=Pro Basic&ProductCode=0147' (found at least ' ')
+[2026-03-21 22:07:24]   DEBUG Icecat response keys: ['msg', 'data']
+[2026-03-21 22:07:24]   DEBUG sample: {"msg":"OK","data":{"GeneralInfo":{"IcecatId":99702863,"ReleaseDate":"","EndOfLifeDate":"","Title":"D-Link DGS-1210-08P Managed L2 Gigabit Ethernet (10/100/1000) Power over Ethernet (PoE) Black","TitleInfo":{"GeneratedIntTitle":"D-Link DGS-1210-08P","GeneratedLocalTitle":{"Value":"D-Link DGS-1210-08
+[2026-03-21 22:07:27]   Procesados: 2921 | descartados: 381
+[2026-03-21 22:07:27]   Imágenes: 688 encontradas | 1651 sin imagen | 582 Apple (skip)
+[2026-03-21 22:07:27]   Nuevas consultas Icecat: 500
+[2026-03-21 22:07:27]   Cache guardado: 1147 entradas
+[2026-03-21 22:07:27]   Template tiene productos vacíos, usando index.html como base
+[2026-03-21 22:07:27]   Modo: web integrada (_TG)
+[2026-03-21 22:07:27]   ZA: 593/593 productos Apple actualizados
+[2026-03-21 22:07:28]   index.html: 30.6MB | tienda: 2921 | Apple: 593
+[2026-03-21 22:07:28] Completado OK
+[2026-03-21 22:07:28] ==================================================
