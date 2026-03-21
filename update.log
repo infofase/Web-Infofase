@@ -40,3 +40,17 @@
 [2026-03-21 20:03:59]   index.html: 30.4MB | tienda: 2921 | Apple: 593
 [2026-03-21 20:03:59] Completado OK
 [2026-03-21 20:03:59] ==================================================
+[2026-03-21 20:13:37] ==================================================
+[2026-03-21 20:13:37] Infofase catalog updater v3 — con imágenes Icecat
+[2026-03-21 20:13:37]   Cache de imágenes: 52 entradas
+[2026-03-21 20:13:37] Descargando https://infofase.com/tienda/megastore.csv
+[2026-03-21 20:13:38]   CSV: 509KB (utf-8-sig)
+[2026-03-21 20:16:29]   Procesados: 2921 | descartados: 381
+[2026-03-21 20:16:29]   Imágenes: 0 encontradas | 2339 sin imagen | 582 Apple (skip)
+[2026-03-21 20:16:29]   Nuevas consultas Icecat: 500
+[2026-03-21 20:16:29]   Cache guardado: 61 entradas
+[2026-03-21 20:16:29]   Modo: web integrada (_TG)
+[2026-03-21 20:16:30]   ZA: 593/593 productos Apple actualizados
+[2026-03-21 20:16:31]   index.html: 30.4MB | tienda: 2921 | Apple: 593
+[2026-03-21 20:16:31] Completado OK
+[2026-03-21 20:16:31] ==================================================
