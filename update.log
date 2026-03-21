@@ -71,3 +71,20 @@
 [2026-03-21 20:27:51]   index.html: 30.5MB | tienda: 2921 | Apple: 593
 [2026-03-21 20:27:51] Completado OK
 [2026-03-21 20:27:51] ==================================================
+[2026-03-21 20:29:56] ==================================================
+[2026-03-21 20:29:56] Infofase catalog updater v3 — con imágenes Icecat
+[2026-03-21 20:29:56]   Cache: 357 entradas válidas (133 nulos purgados)
+[2026-03-21 20:29:56] Descargando https://infofase.com/tienda/megastore.csv
+[2026-03-21 20:29:57]   CSV: 509KB (utf-8-sig)
+[2026-03-21 20:29:59]   DEBUG Icecat error: URL can't contain control characters. '/api/?UserName=luis_1980&Language=EN&Brand=Pro Basic&ProductCode=0147' (found at least ' ')
+[2026-03-21 20:30:59]   DEBUG Icecat response keys: ['msg', 'data']
+[2026-03-21 20:30:59]   DEBUG sample: {"msg":"OK","data":{"GeneralInfo":{"IcecatId":36546188,"ReleaseDate":"","EndOfLifeDate":"","Title":"Equip Economy Multi-functional TV Cart","TitleInfo":{"GeneratedIntTitle":"Equip 650603 monitor mount / stand","GeneratedLocalTitle":{"Value":"Equip 650603 monitor mount / stand 177.8 cm (70\") Floor B
+[2026-03-21 20:33:40]   Procesados: 2921 | descartados: 381
+[2026-03-21 20:33:40]   Imágenes: 494 encontradas | 1845 sin imagen | 582 Apple (skip)
+[2026-03-21 20:33:40]   Nuevas consultas Icecat: 500
+[2026-03-21 20:33:40]   Cache guardado: 830 entradas
+[2026-03-21 20:33:40]   Modo: web integrada (_TG)
+[2026-03-21 20:33:40]   ZA: 593/593 productos Apple actualizados
+[2026-03-21 20:33:41]   index.html: 30.6MB | tienda: 2921 | Apple: 593
+[2026-03-21 20:33:41] Completado OK
+[2026-03-21 20:33:41] ==================================================
