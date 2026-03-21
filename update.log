@@ -173,3 +173,20 @@
 [2026-03-21 21:22:59]   index.html: 30.6MB | tienda: 2921 | Apple: 593
 [2026-03-21 21:22:59] Completado OK
 [2026-03-21 21:22:59] ==================================================
+[2026-03-21 21:29:15] ==================================================
+[2026-03-21 21:29:15] Infofase catalog updater v3 — con imágenes Icecat
+[2026-03-21 21:29:15]   Cache: 671 entradas válidas (455 nulos purgados)
+[2026-03-21 21:29:15] Descargando https://infofase.com/tienda/megastore.csv
+[2026-03-21 21:29:16]   CSV: 509KB (utf-8-sig)
+[2026-03-21 21:29:18]   DEBUG Icecat error: URL can't contain control characters. '/api/?UserName=luis_1980&Language=EN&Brand=Pro Basic&ProductCode=0147' (found at least ' ')
+[2026-03-21 21:33:09]   DEBUG Icecat response keys: ['msg', 'data']
+[2026-03-21 21:33:09]   DEBUG sample: {"msg":"OK","data":{"GeneralInfo":{"IcecatId":31911,"ReleaseDate":"","EndOfLifeDate":"","Title":"D-Link DES-1024D Unmanaged","TitleInfo":{"GeneratedIntTitle":"D-Link DES-1024D","GeneratedLocalTitle":{"Value":"D-Link DES-1024D Unmanaged","Language":"EN"},"BrandLocalTitle":{"Value":"","Language":"EN"}
+[2026-03-21 21:33:15]   Procesados: 2921 | descartados: 381
+[2026-03-21 21:33:15]   Imágenes: 679 encontradas | 1660 sin imagen | 582 Apple (skip)
+[2026-03-21 21:33:15]   Nuevas consultas Icecat: 500
+[2026-03-21 21:33:15]   Cache guardado: 1134 entradas
+[2026-03-21 21:33:15]   Modo: web integrada (_TG)
+[2026-03-21 21:33:16]   ZA: 593/593 productos Apple actualizados
+[2026-03-21 21:33:16]   index.html: 30.6MB | tienda: 2921 | Apple: 593
+[2026-03-21 21:33:16] Completado OK
+[2026-03-21 21:33:16] ==================================================
