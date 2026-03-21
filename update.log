@@ -156,3 +156,20 @@
 [2026-03-21 21:00:27]   index.html: 30.6MB | tienda: 2921 | Apple: 593
 [2026-03-21 21:00:27] Completado OK
 [2026-03-21 21:00:27] ==================================================
+[2026-03-21 21:18:54] ==================================================
+[2026-03-21 21:18:54] Infofase catalog updater v3 — con imágenes Icecat
+[2026-03-21 21:18:54]   Cache: 662 entradas válidas (452 nulos purgados)
+[2026-03-21 21:18:54] Descargando https://infofase.com/tienda/megastore.csv
+[2026-03-21 21:18:56]   CSV: 509KB (utf-8-sig)
+[2026-03-21 21:18:57]   DEBUG Icecat error: URL can't contain control characters. '/api/?UserName=luis_1980&Language=EN&Brand=Pro Basic&ProductCode=0147' (found at least ' ')
+[2026-03-21 21:22:49]   DEBUG Icecat response keys: ['msg', 'data']
+[2026-03-21 21:22:49]   DEBUG sample: {"msg":"OK","data":{"GeneralInfo":{"IcecatId":117189859,"ReleaseDate":"","EndOfLifeDate":"","Title":"Brother DCP-L2627DWE EcoPro Ready 3-in-1 Mono Laser Printer","TitleInfo":{"GeneratedIntTitle":"Brother DCP-L2627DWE multifunction printer","GeneratedLocalTitle":{"Value":"Brother DCP-L2627DWE multifu
+[2026-03-21 21:22:57]   Procesados: 2921 | descartados: 381
+[2026-03-21 21:22:57]   Imágenes: 671 encontradas | 1668 sin imagen | 582 Apple (skip)
+[2026-03-21 21:22:57]   Nuevas consultas Icecat: 500
+[2026-03-21 21:22:57]   Cache guardado: 1126 entradas
+[2026-03-21 21:22:58]   Modo: web integrada (_TG)
+[2026-03-21 21:22:58]   ZA: 593/593 productos Apple actualizados
+[2026-03-21 21:22:59]   index.html: 30.6MB | tienda: 2921 | Apple: 593
+[2026-03-21 21:22:59] Completado OK
+[2026-03-21 21:22:59] ==================================================
