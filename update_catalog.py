@@ -307,7 +307,70 @@ def process_csv(text, img_cache):
     return products
 
 # ── ASCII encode helper ───────────────────────────────────────
+def fix_js_script(s):
+    """Fix JS in HTML: replace backslash-n between statements with actual newlines,
+    fix actual newlines inside strings back to backslash-n. Regex-aware."""
+    result = []; state='code'; prev_token=''; i=0
+    while i<len(s):
+        c=s[i]
+        if state=='code':
+            if c=='/' and i+1<len(s) and s[i+1] not in ('/', '*'):
+                pt=prev_token.rstrip()
+                if (not pt or pt[-1] in '=([,!&|?:{};' or
+                    pt.endswith('return') or pt.endswith('typeof') or
+                    pt.endswith('void') or pt.endswith('delete')):
+                    state='regex'; result.append(c); i+=1; continue
+            if c=="'": state='sq'; result.append(c)
+            elif c=='"': state='dq'; result.append(c)
+            elif c=='`': state='tpl'; result.append(c)
+            elif c=='/' and i+1<len(s) and s[i+1]=='/': state='cl'; result.append(c)
+            elif c=='/' and i+1<len(s) and s[i+1]=='*': state='cb'; result.append(c)
+            else: result.append(c)
+            if c not in ' \t\n': prev_token=(prev_token+c)[-50:]
+        elif state=='sq':
+            if c=='\\' and i+1<len(s): result.append(c); result.append(s[i+1]); i+=2; continue
+            elif c=="'": state='code'; result.append(c)
+            elif c=='\n': result.append('\\n')
+            else: result.append(c)
+        elif state=='dq':
+            if c=='\\' and i+1<len(s): result.append(c); result.append(s[i+1]); i+=2; continue
+            elif c=='"': state='code'; result.append(c)
+            elif c=='\n': result.append('\\n')
+            else: result.append(c)
+        elif state=='tpl':
+            if c=='\\' and i+1<len(s): result.append(c); result.append(s[i+1]); i+=2; continue
+            elif c=='`': state='code'; result.append(c)
+            else: result.append(c)
+        elif state=='regex':
+            if c=='\\' and i+1<len(s): result.append(c); result.append(s[i+1]); i+=2; continue
+            elif c=='[': state='regex_class'; result.append(c)
+            elif c=='/': state='code'; result.append(c)
+            else: result.append(c)
+        elif state=='regex_class':
+            if c=='\\' and i+1<len(s): result.append(c); result.append(s[i+1]); i+=2; continue
+            elif c==']': state='regex'; result.append(c)
+            else: result.append(c)
+        elif state=='cl':
+            result.append(c)
+            if c=='\n': state='code'
+        elif state=='cb':
+            result.append(c)
+            if c=='*' and i+1<len(s) and s[i+1]=='/': result.append(s[i+1]); i+=2; state='code'; continue
+        i+=1
+    return ''.join(result)
+
+def fix_tienda_html(html):
+    """Fix JS scripts in tienda HTML: normalize backslash-n sequences."""
+    import re as _re
+    def fix_script(m):
+        sc = m.group(2)
+        sc2 = sc.replace('\\n', '\n')  # backslash-n → actual newline
+        sc3 = fix_js_script(sc2)           # newlines in strings → backslash-n
+        return m.group(1) + sc3 + m.group(3)
+    return _re.sub(r'(<script[^>]*>)(.*?)(</script>)', fix_script, html, flags=_re.S)
+
 def ascii_encode(html_str):
+    # Legacy - kept for ZA encoding compatibility
     out = []
     for ch in html_str:
         if ord(ch) > 127:
@@ -395,8 +458,8 @@ def update_html(products):
             tg_html, count=1)
         if n2 == 0:
             log("ERROR: patrón no encontrado dentro de _TG"); return False
-        new_tg_b64 = base64.b64encode(
-            ascii_encode(tg_new).encode('ascii')).decode('ascii')
+        tg_fixed    = fix_tienda_html(tg_new)
+        new_tg_b64  = base64.b64encode(tg_fixed.encode('utf-8')).decode('ascii')
         html2 = html[:tg_m.start(2)] + new_tg_b64 + html[tg_m.end(2):]
         html2, za_updated = update_zona_apple(html2, _csv_rows)
 
