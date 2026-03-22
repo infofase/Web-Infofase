@@ -100,13 +100,26 @@ def calc_price(pvp_s, dto_s, canon_s="0"):
         return None, 0
 
 def stock_status(stock_val, viajando_val="0"):
+    """
+    Lógica correcta:
+    - stock    = unidades físicas (negativo = pedidos pendientes de servir)
+    - viajando = unidades en tránsito desde el proveedor
+    - efectivo = stock + viajando (unidades netas disponibles/llegando)
+
+    Ejemplos:
+      stock=5,  viajando=0 → 'stock'    (hay unidades)
+      stock=-1, viajando=0 → 'agotado'  (pedidos pendientes, nada llegando)
+      stock=-1, viajando=1 → 'agotado'  (-1+1=0, no hay neto positivo)
+      stock=-2, viajando=3 → 'transito' (-2+3=1, llega 1 unidad neta)
+      stock=0,  viajando=2 → 'transito' (0+2=2, llegan unidades)
+    """
     try:
         qty      = int(str(stock_val).strip() or 0)
         viajando = int(str(viajando_val).strip() or 0)
     except:
         qty, viajando = 0, 0
-    if qty > 0:             return "stock"
-    if viajando > 0 or qty < 0: return "transito"
+    if qty > 0:                    return "stock"
+    if qty + viajando > 0:         return "transito"
     return "agotado"
 
 def extract_attrs(name):
