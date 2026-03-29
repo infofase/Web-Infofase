@@ -36,5 +36,5 @@ jobs:
           git config user.email "info@infofase.com"
           git add index.html update.log img_cache.json
           git diff --staged --quiet || git commit -m "Auto: catálogo actualizado $(date '+%Y-%m-%d %H:%M')"
-          git pull --rebase origin main
+          git pull --rebase -X theirs origin main
           git push
