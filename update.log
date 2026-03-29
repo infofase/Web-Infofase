@@ -2961,3 +2961,29 @@
 [2026-03-29 22:24:35]   index.html: 36.3MB | tienda: 2917 | Apple: 588
 [2026-03-29 22:24:35] Completado OK
 [2026-03-29 22:24:35] ==================================================
+[2026-03-29 22:31:46] ==================================================
+[2026-03-29 22:31:46] Infofase catalog updater v3 — con imágenes Icecat
+[2026-03-29 22:31:46]   Cache: 1403 con imagen | 941 nulls PURGADOS para reintentar con cuenta de pago | total ahora 1403
+[2026-03-29 22:31:46] Descargando https://infofase.com/tienda/megastore.csv
+[2026-03-29 22:31:47]   CSV: 507KB (utf-8-sig)
+[2026-03-29 22:31:47]   Delimitador CSV detectado: ';'
+[2026-03-29 22:31:48]   DIAG HTTP 403 [antec|0-761345-40054-1]: {"StatusCode":9,"Code":403,"Error":"Forbidden","Message":"To access Full Icecat content, an app_key is required. Full Icecat users can find it on their My Profile page."}
+[2026-03-29 22:31:48]   DIAG HTTP 403 [oki|01126301]: {"StatusCode":9,"Code":403,"Error":"Forbidden","Message":"To access Full Icecat content, an app_key is required. Full Icecat users can find it on their My Profile page."}
+[2026-03-29 22:31:48]   DIAG HTTP 404 [pro basic|0147]: {"StatusCode":8,"Code":404,"Error":"Not Found","Message":"The requested product is not present in the Icecat database"}
+[2026-03-29 22:31:49]   DIAG HTTP 403 [cecotec|02596]: {"StatusCode":9,"Code":403,"Error":"Forbidden","Message":"To access Full Icecat content, an app_key is required. Full Icecat users can find it on their My Profile page."}
+[2026-03-29 22:31:49]   DIAG HTTP 404 [union memory|03b03-00475700]: {"StatusCode":8,"Code":404,"Error":"Not Found","Message":"The requested product is not present in the Icecat database"}
+[2026-03-29 22:39:00]   Procesados: 2917 | descartados: 378
+[2026-03-29 22:39:00]   Imágenes: 1399 con imagen | 941 sin imagen | 577 Apple (skip)
+[2026-03-29 22:39:00]   Icecat: 941 productos NUEVOS consultados en esta ejecución
+[2026-03-29 22:39:00]   Cache: 1399 productos servidos desde cache
+[2026-03-29 22:39:00]   Cache guardado: 2344 entradas
+[2026-03-29 22:39:00]   Modo: web integrada (_TG)
+[2026-03-29 22:39:03]   Tienda: patch unidades inyectado (2352 prods con stock/transito)
+[2026-03-29 22:39:03]   ZA: 3295 entradas en CSV para cruzar con Zona Apple
+[2026-03-29 22:39:03]   ZA: 593 productos Apple en catálogo
+[2026-03-29 22:39:03]   ZA DIAG MDE14Y/A: stock_csv=0 viajando_csv=1 → qty=0 via=1 net=1 status=transito
+[2026-03-29 22:39:03]   ZA: 588/593 actualizados | 5 sin match en CSV
+[2026-03-29 22:39:03]   ZA: patch unidades inyectado (284 prods con stock/transito)
+[2026-03-29 22:39:04]   index.html: 36.3MB | tienda: 2917 | Apple: 588
+[2026-03-29 22:39:04] Completado OK
+[2026-03-29 22:39:04] ==================================================
