@@ -29,6 +29,7 @@ jobs:
         env:
           ICECAT_USER: ${{ secrets.ICECAT_USER }}
           ICECAT_PASS: ${{ secrets.ICECAT_PASS }}
+          PURGE_NULL_CACHE: ${{ vars.PURGE_NULL_CACHE }}
 
       - name: Commit y push si hay cambios
         run: |
