@@ -857,7 +857,7 @@ def _build_stock_patch(stock_data, var_suffix):
             'return null;'
           '}'
 
-          # Estrategia 1: ZA — busca .badge con .badge-lines
+          # Estrategia 1: ZA — busca .badge con .badge-lines o .bls
           'function addToBadge(root,d){'
             'if(!root||!root.querySelector)return false;'
             'var b=root.querySelector(".badge");'
@@ -866,7 +866,8 @@ def _build_stock_patch(stock_data, var_suffix):
             'var t=qtyText(d);if(!t)return true;'
             'var s=document.createElement("span");'
             's.className="badge-qty";s.textContent=t;'
-            'var bl=b.querySelector(".badge-lines");'
+            # .badge-lines = Zona Apple | .bls = Tienda Online
+            'var bl=b.querySelector(".badge-lines,.bls");'
             'if(bl)bl.appendChild(s);else b.appendChild(s);'
             'return true;'
           '}'
