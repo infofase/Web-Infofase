@@ -919,11 +919,16 @@ def _build_stock_patch(stock_data, var_suffix):
             '}'
           '}'
 
-          # ID del producto desde onclick
+          # ID del producto: onclick (ZA) o .cref/.card-ref (Tienda)
           'function cardId(card){'
+            # Estrategia 1: onclick="openModal('id')" — Zona Apple
             'var oc=card.getAttribute("onclick")||"";'
             r'var m=oc.match(/openModal\([\'"]([^\'"]+)[\'"]\)/);'
-            'return m?m[1].toLowerCase():null;'
+            'if(m)return m[1].toLowerCase();'
+            # Estrategia 2: .cref o .card-ref — Tienda Online
+            'var ref=card.querySelector(".cref,.card-ref,[class*=ref]");'
+            'if(ref)return(ref.textContent||"").trim().toLowerCase();'
+            'return null;'
           '}'
 
           # Parchear tarjeta
@@ -943,7 +948,8 @@ def _build_stock_patch(stock_data, var_suffix):
           'function patchModal(inner){'
             f'var id=window.{cprod};'
             'if(!id){'
-              'var ref=inner.querySelector?inner.querySelector(".m-ref,.card-ref,[class*=ref]"):null;'
+              # ZA: .m-ref | Tienda: .cref o cualquier elemento con clase *ref*
+              'var ref=inner.querySelector?inner.querySelector(".m-ref,.cref,.card-ref,[class*=ref]"):null;'
               'if(ref)id=(ref.textContent||"").trim().toLowerCase();'
             '}'
             'if(id)addQty(inner,SD[id]);'
