@@ -809,124 +809,173 @@ def ascii_encode(html_str):
 
 # ── Stock badge patch builder ─────────────────────────────────
 def _build_stock_patch(stock_data, var_suffix):
-    """Genera CSS + JS para mostrar unidades en badges de tarjetas Y modal.
+    """Genera CSS + JS para mostrar unidades en tarjetas Y modal/ficha.
 
-    Funciona en cualquier iframe con:
-      - #grid > .card[onclick="openModal('id')"]  — tarjetas
-      - #modalInner  (.m-ref = referencia, .badge = estado)  — ficha
-      - .badge.st / .badge.tr / .badge-lines / .bdot  — clases CSS estándar
-
-    var_suffix: 'ZA' para Zona Apple, 'TO' para Tienda Online.
+    Estrategia doble para máxima compatibilidad con cualquier estructura HTML:
+      1. Busca .badge / .badge-lines (Zona Apple — clases conocidas)
+      2. Si no encuentra, busca por contenido de texto: "Disponible", "24h",
+         "recogida", "agotado", etc. (Tienda Online — clases desconocidas)
+    Funciona en ambos iframes sin conocer las clases CSS de la tienda.
     """
     stock_json = json.dumps(stock_data, ensure_ascii=False, separators=(',',':'))
-    vname = '__STOCK_' + var_suffix          # window.__STOCK_ZA / window.__STOCK_TO
-    cprod = '__CPROD_' + var_suffix          # id del producto abierto actualmente
+    vname = '__STOCK_' + var_suffix   # window.__STOCK_ZA / window.__STOCK_TO
+    cprod = '__CPROD_' + var_suffix   # producto abierto actualmente
 
     css = (
         '<style>'
-        # Segunda línea del badge: unidades (tarjeta y modal)
         '.badge-qty{'
-          'display:block;font-size:8.5px;font-weight:500;'
-          'opacity:.85;margin-top:1px;line-height:1.2'
+          'display:block;font-size:8.5px;font-weight:600;'
+          'margin-top:2px;line-height:1.3'
         '}'
-        '.badge.st .badge-qty{color:#1D4ED8}'   # azul (en stock)
-        '.badge.tr .badge-qty{color:#C2410C}'   # naranja (próxima entrada)
-        # Badge en la ficha de producto (modal): ligeramente más grande
+        '.badge.st .badge-qty{color:#1D4ED8}'
+        '.badge.tr .badge-qty{color:#C2410C}'
         '.m-info .badge-qty{font-size:10px}'
+        # Tienda: elemento inline junto al texto de disponibilidad
+        '.ifx-qty{'
+          'display:inline-block;font-size:11px;font-weight:600;'
+          'margin-left:8px;vertical-align:middle'
+        '}'
+        '.ifx-qty.ifx-st{color:#1D4ED8}'
+        '.ifx-qty.ifx-tr{color:#C2410C}'
+        '.modal .ifx-qty,.m-info .ifx-qty{font-size:12px;margin-left:0;display:block;margin-top:4px}'
         '</style>'
     )
 
     js = (
         '<script>'
-        # ── Datos de stock ─────────────────────────────────────────
         f'window.{vname}={stock_json};'
         '(function(){'
           f'var SD=window.{vname}||{{}};'
 
-          # Texto de unidades según estado
+          # Texto de unidades
           'function qtyText(d){'
             'if(!d)return null;'
             'if(d.st==="stock"&&d.qty>0)'
-              'return d.qty+(d.qty===1?" unidad":" unidades");'
+              'return d.qty+(d.qty===1?" ud":" uds");'
             'if(d.st==="transito"&&d.net>0)'
               'return d.net+(d.net===1?" en camino":" en camino");'
             'return null;'
           '}'
 
-          # Añadir .badge-qty al badge si no existe ya
-          'function addQty(badge,d){'
-            'if(!badge||badge.querySelector(".badge-qty"))return;'
-            'var t=qtyText(d);if(!t)return;'
+          # Estrategia 1: ZA — busca .badge con .badge-lines
+          'function addToBadge(root,d){'
+            'if(!root||!root.querySelector)return false;'
+            'var b=root.querySelector(".badge");'
+            'if(!b)return false;'
+            'if(b.querySelector(".badge-qty"))return true;'
+            'var t=qtyText(d);if(!t)return true;'
             'var s=document.createElement("span");'
             's.className="badge-qty";s.textContent=t;'
-            'var bl=badge.querySelector(".badge-lines");'
-            'if(bl)bl.appendChild(s);'      # badge con .badge-lines (ZA)
-            'else badge.appendChild(s);'     # badge sin .badge-lines (fallback)
+            'var bl=b.querySelector(".badge-lines");'
+            'if(bl)bl.appendChild(s);else b.appendChild(s);'
+            'return true;'
           '}'
 
-          # Extraer ID de producto del onclick de una .card
+          # Estrategia 2: Tienda — buscar elemento por texto de disponibilidad
+          'function findAvailEl(root){'
+            'var kws=["disponible","agotado","transito","recogida","24h","48h","72h","envío","envio"];'
+            'if(!root||!root.querySelectorAll)return null;'
+            'var els=root.querySelectorAll("*");'
+            'for(var i=0;i<els.length;i++){'
+              'var el=els[i];'
+              'if(el.childElementCount>3)continue;'
+              'var t=(el.textContent||"").trim().toLowerCase();'
+              'if(t.length<2||t.length>120)continue;'
+              'for(var j=0;j<kws.length;j++){'
+                'if(t.indexOf(kws[j])>=0)return el;'
+              '}'
+            '}'
+            # Fallback: buscar por clase parcial
+            'var clsFb=["badge","status","avail","stock","delivery","disp"];'
+            'for(var k=0;k<clsFb.length;k++){'
+              'var f=root.querySelector("[class*=\\""+clsFb[k]+"\\"]");'
+              'if(f)return f;'
+            '}'
+            'return null;'
+          '}'
+
+          # Añadir qty al elemento correcto
+          'function addQty(root,d){'
+            'if(!d)return;'
+            'var t=qtyText(d);if(!t)return;'
+            'if(root&&root.querySelector&&root.querySelector(".badge-qty,.ifx-qty"))return;'
+            # Estrategia 1: ZA badge
+            'if(addToBadge(root,d))return;'
+            # Estrategia 2: tienda
+            'var el=findAvailEl(root);'
+            'if(el){'
+              'var sp=document.createElement("span");'
+              'sp.className="ifx-qty "+(d.st==="stock"?"ifx-st":"ifx-tr");'
+              'sp.textContent=t;'
+              'el.parentNode.insertBefore(sp,el.nextSibling);'
+              'return;'
+            '}'
+            # Último recurso: añadir al cuerpo de la tarjeta/modal
+            'var body=root.querySelector&&root.querySelector(".card-body,.m-info,.product-info");'
+            'if(body){'
+              'var dv=document.createElement("div");'
+              'dv.className="ifx-qty "+(d.st==="stock"?"ifx-st":"ifx-tr");'
+              'dv.textContent=t;body.appendChild(dv);'
+            '}'
+          '}'
+
+          # ID del producto desde onclick
           'function cardId(card){'
             'var oc=card.getAttribute("onclick")||"";'
             r'var m=oc.match(/openModal\([\'"]([^\'"]+)[\'"]\)/);'
             'return m?m[1].toLowerCase():null;'
           '}'
 
-          # Parchear badge de una tarjeta
+          # Parchear tarjeta
           'function patchCard(card){'
             'var id=cardId(card);'
-            'if(id)addQty(card.querySelector(".badge"),SD[id]);'
+            'if(id)addQty(card,SD[id]);'
           '}'
 
-          # ── Rastrear qué producto está abierto (para el modal) ──
+          # Rastrear producto abierto
           f'window.{cprod}=null;'
           'document.addEventListener("click",function(e){'
-            'var c=e.target.closest(".card");'
+            'var c=e.target.closest?e.target.closest(".card"):null;'
             f'if(c){{var id=cardId(c);if(id)window.{cprod}=id;}}'
           '},true);'
 
-          # Parchear badge del modal/ficha de producto
+          # Parchear modal
           'function patchModal(inner){'
-            # ID del producto: del rastreador de clicks o del .m-ref/.card-ref
             f'var id=window.{cprod};'
             'if(!id){'
-              'var ref=inner.querySelector(".m-ref,.card-ref");'
-              'if(ref)id=ref.textContent.trim().toLowerCase();'
+              'var ref=inner.querySelector?inner.querySelector(".m-ref,.card-ref,[class*=ref]"):null;'
+              'if(ref)id=(ref.textContent||"").trim().toLowerCase();'
             '}'
-            'if(!id)return;'
-            'var b=inner.querySelector(".badge");'
-            'addQty(b,SD[id]);'
+            'if(id)addQty(inner,SD[id]);'
           '}'
 
-          # ── Observar #grid → tarjetas ──────────────────────────
+          # Observar #grid
           'function patchAll(){document.querySelectorAll(".card").forEach(patchCard);}'
           'var grid=document.getElementById("grid");'
-          'if(grid){'
-            'new MutationObserver(function(ms){'
-              'ms.forEach(function(mu){'
-                'mu.addedNodes.forEach(function(n){'
-                  'if(n.nodeType!==1)return;'
-                  'if(n.classList&&n.classList.contains("card"))patchCard(n);'
-                  'else if(n.querySelectorAll)'
-                    'n.querySelectorAll(".card").forEach(patchCard);'
-                '});'
+          'if(grid)new MutationObserver(function(ms){'
+            'ms.forEach(function(mu){'
+              'mu.addedNodes.forEach(function(n){'
+                'if(n.nodeType!==1)return;'
+                'if(n.classList&&n.classList.contains("card"))patchCard(n);'
+                'else if(n.querySelectorAll)n.querySelectorAll(".card").forEach(patchCard);'
               '});'
-            '}).observe(grid,{childList:true,subtree:true});'
-          '}'
+            '});'
+          '}).observe(grid,{childList:true,subtree:true});'
 
-          # ── Observar #modalInner → ficha de producto ───────────
+          # Observar cualquier modal/ficha (modalInner u otros)
+          'function observeModal(el){'
+            'new MutationObserver(function(){'
+              'setTimeout(function(){patchModal(el);},80);'
+            '}).observe(el,{childList:true,subtree:true});'
+          '}'
           'var mi=document.getElementById("modalInner");'
-          'if(mi){'
-            'new MutationObserver(function(ms){'
-              'ms.forEach(function(mu){'
-                'if(mu.addedNodes.length)patchModal(mi);'
-              '});'
-            '}).observe(mi,{childList:true,subtree:true});'
-          '}'
+          'if(mi)observeModal(mi);'
+          'document.querySelectorAll("[id*=modal],[id*=Modal],[id*=detail],[id*=ficha],[id*=product]")'
+          '.forEach(function(el){if(el.id!=="modalInner")observeModal(el);});'
 
-          # Parchear lo que ya esté en el DOM al cargar
           'if(document.readyState==="loading")'
             'document.addEventListener("DOMContentLoaded",patchAll);'
-          'else{patchAll();setTimeout(patchAll,500);}'
+          'else{patchAll();setTimeout(patchAll,600);setTimeout(patchAll,2000);}'
         '})();'
         '</script>'
     )
