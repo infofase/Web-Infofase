@@ -576,12 +576,19 @@ def process_binary_csv(text):
             "n":   nombre,
             "p":   price,
             "cat": cat,
-            "s":   cat_raw,          # descripción de categoría
+            "s":   cat_raw,          # descripción de categoría completa
             "b":   marca,
             "st":  st,
             "_src": "binary",        # marca interna de origen
             "_cod": codigo,          # código original Binary (para deduplicación)
         }
+
+        # Jerarquía de categorías para navegación (Nivel1>Nivel2>Nivel3)
+        cat_parts = [c.strip() for c in cat_raw.split('>')]
+        if len(cat_parts) >= 1 and cat_parts[0]: p["fam"]  = cat_parts[0]
+        if len(cat_parts) >= 2 and cat_parts[1]: p["sub"]  = cat_parts[1]
+        if len(cat_parts) >= 3 and cat_parts[2]: p["sub2"] = cat_parts[2]
+
         if canon_v > 0:  p["c"]   = canon_v
         if st == "stock" and qty > 0:
             p["qty"] = qty
@@ -807,7 +814,220 @@ def ascii_encode(html_str):
             out.append(ch)
     return ''.join(out)
 
-# ── Stock badge patch builder ─────────────────────────────────
+# ── Navegación jerárquica por familias ────────────────────────
+def _build_nav_patch():
+    """Genera CSS + JS que construye la navegación Familia → Subfamilia → Tipo
+    a partir de los campos fam/sub/sub2 de los productos Binary inyectados
+    en window.ALL. Modifica window.ALL y llama a applyAll() para filtrar.
+    """
+    css = (
+        '<style>'
+        '#ifx-nav{width:100%;margin-bottom:4px}'
+        '.ifx-row{display:flex;flex-wrap:wrap;gap:5px;padding:5px 0}'
+        '.ifx-lbl{font-size:9.5px;font-weight:700;color:var(--ink4,#aaa);'
+          'text-transform:uppercase;letter-spacing:.07em;'
+          'display:block;width:100%;margin-top:4px}'
+        '.ifx-sep{height:1px;background:var(--bdr,rgba(0,0,0,.08));margin:6px 0}'
+        '.ifx-btn{'
+          'font-size:11.5px;font-weight:600;padding:4px 12px;'
+          'border-radius:20px;border:1.5px solid var(--bdr2,#ccc);'
+          'background:var(--bg,#fff);color:var(--ink2,#555);'
+          'cursor:pointer;white-space:nowrap;transition:.13s all'
+        '}'
+        '.ifx-btn:hover{border-color:var(--or,#F57008);color:var(--or,#F57008)}'
+        '.ifx-btn.on{'
+          'background:var(--or,#F57008);color:#fff;'
+          'border-color:var(--or,#F57008)'
+        '}'
+        '.ifx-count{'
+          'font-size:9px;opacity:.7;margin-left:3px;font-weight:400'
+        '}'
+        '</style>'
+    )
+
+    js = (
+        '<script>'
+        '(function(){'
+          'var _orig=null,_idx={},_aidx={},_st={fam:null,sub:null,sub2:null,attrs:{}};'
+
+          # Esperar a que ALL esté disponible
+          'function init(){'
+            'if(!window.ALL||!window.ALL.length){setTimeout(init,500);return;}'
+            '_orig=window.ALL.slice();'
+            '_build();_renderNav();'
+          '}'
+
+          # Construir índice: fam → sub → sub2 → count
+          # y atributos: fam|sub → {attrName: {val: count}}
+          'function _build(){'
+            '_orig.forEach(function(p){'
+              'var f=p.fam,s=p.sub,s2=p.sub2||"";'
+              'if(!f)return;'
+              'if(!_idx[f])_idx[f]={};'
+              'if(!_idx[f][s])_idx[f][s]={};'
+              'if(s2){_idx[f][s][s2]=(_idx[f][s][s2]||0)+1;}'
+              # Atributos
+              'if(p.a){'
+                'var k=f+"\\x00"+s;'
+                'if(!_aidx[k])_aidx[k]={};'
+                'Object.keys(p.a).forEach(function(ak){'
+                  'if(!_aidx[k][ak])_aidx[k][ak]={};'
+                  'var av=p.a[ak];'
+                  '_aidx[k][ak][av]=(_aidx[k][ak][av]||0)+1;'
+                '});'
+              '}'
+            '});'
+          '}'
+
+          # Contar productos para estado actual
+          'function _count(f,s,s2,at){'
+            'return _orig.filter(function(p){'
+              'if(f&&p.fam!==f)return false;'
+              'if(s&&p.sub!==s)return false;'
+              'if(s2&&(p.sub2||"")!==s2)return false;'
+              'if(at&&Object.keys(at).length&&p.a){'
+                'for(var k in at){if(at[k]&&p.a[k]!==at[k])return false;}'
+              '}'
+              'return true;'
+            '}).length;'
+          '}'
+
+          # Aplicar filtro: modifica window.ALL y llama applyAll()
+          'function _apply(){'
+            'var f=_st.fam,s=_st.sub,s2=_st.sub2,at=_st.attrs;'
+            'var hasAt=Object.keys(at).length>0;'
+            'window.ALL=_orig.filter(function(p){'
+              'if(f&&p.fam!==f)return false;'
+              'if(s&&p.sub!==s)return false;'
+              'if(s2&&(p.sub2||"")!==s2)return false;'
+              'if(hasAt&&p.a){'
+                'for(var k in at){if(at[k]&&p.a[k]!==at[k])return false;}'
+              '}'
+              'return true;'
+            '});'
+            'if(typeof applyAll==="function")applyAll();'
+          '}'
+
+          # Helpers DOM
+          'function _el(tag,cls){'
+            'var e=document.createElement(tag);'
+            'if(cls)e.className=cls;return e;'
+          '}'
+          'function _btn(txt,n,active,fn){'
+            'var b=_el("button","ifx-btn"+(active?" on":""));'
+            'b.innerHTML=txt+(n!==null?"<span class=\'ifx-count\'>("+n+")</span>":"");'
+            'b.onclick=fn;return b;'
+          '}'
+
+          # Renderizar navegación completa
+          'function _renderNav(){'
+            'var nav=document.getElementById("catNavIn");'
+            'if(!nav)return;'
+
+            'var wrap=_el("div");wrap.id="ifx-nav";'
+
+            # ── Nivel 1: Familias ──
+            'var fr=_el("div","ifx-row");'
+            # Todos
+            'fr.appendChild(_btn("Todos",_orig.length,!_st.fam,function(){'
+              '_st={fam:null,sub:null,sub2:null,attrs:{}};_apply();_renderNav();'
+            '}));'
+
+            'Object.keys(_idx).sort().forEach(function(f){'
+              'var subs=_idx[f];'
+              'var n=Object.keys(subs).reduce(function(a,s){'
+                'return a+Object.keys(subs[s]).reduce(function(b,k){return b+(subs[s][k]||1);},0);'
+              '},0);'
+              'if(!n)n=_count(f,null,null,{});'
+              'fr.appendChild(_btn(f,n,_st.fam===f,function(ff){'
+                'return function(){'
+                  '_st={fam:ff,sub:null,sub2:null,attrs:{}};_apply();_renderNav();'
+                '};'
+              '}(f)));'
+            '});'
+            'wrap.appendChild(fr);'
+
+            # ── Nivel 2: Subfamilias ──
+            'if(_st.fam&&_idx[_st.fam]){'
+              'var subs=_idx[_st.fam];'
+              'var sk=Object.keys(subs).filter(Boolean).sort();'
+              'if(sk.length>0){'
+                'wrap.appendChild(_el("div","ifx-sep"));'
+                'var sr=_el("div","ifx-row");'
+                'var sl=_el("span","ifx-lbl");sl.textContent="Subcategoría";'
+                'sr.appendChild(sl);'
+                'sr.appendChild(_btn("Todas",_count(_st.fam,null,null,{}),!_st.sub,function(){'
+                  '_st.sub=null;_st.sub2=null;_st.attrs={};_apply();_renderNav();'
+                '}));'
+                'sk.forEach(function(s){'
+                  'var n=_count(_st.fam,s,null,{});'
+                  'sr.appendChild(_btn(s,n,_st.sub===s,function(ss){'
+                    'return function(){'
+                      '_st.sub=ss;_st.sub2=null;_st.attrs={};_apply();_renderNav();'
+                    '};'
+                  '}(s)));'
+                '});'
+                'wrap.appendChild(sr);'
+              '}'
+
+              # ── Nivel 3: Tipo (sub2) ──
+              'if(_st.sub&&subs[_st.sub]){'
+                'var s2k=Object.keys(subs[_st.sub]).filter(Boolean).sort();'
+                'if(s2k.length>1){'
+                  'wrap.appendChild(_el("div","ifx-sep"));'
+                  'var s2r=_el("div","ifx-row");'
+                  'var s2l=_el("span","ifx-lbl");s2l.textContent="Tipo";'
+                  's2r.appendChild(s2l);'
+                  's2r.appendChild(_btn("Todos",_count(_st.fam,_st.sub,null,{}),!_st.sub2,function(){'
+                    '_st.sub2=null;_st.attrs={};_apply();_renderNav();'
+                  '}));'
+                  's2k.forEach(function(s2){'
+                    'var n=subs[_st.sub][s2]||_count(_st.fam,_st.sub,s2,{});'
+                    's2r.appendChild(_btn(s2,n,_st.sub2===s2,function(s2v){'
+                      'return function(){'
+                        '_st.sub2=s2v;_st.attrs={};_apply();_renderNav();'
+                      '};'
+                    '}(s2)));'
+                  '});'
+                  'wrap.appendChild(s2r);'
+                '}'
+              '}'
+
+              # ── Atributos ──
+              'var ak=(_st.fam||"")+"\\x00"+(_st.sub||"");'
+              'var amap=_aidx[ak]||{};'
+              'var akeys=Object.keys(amap).sort();'
+              'akeys.forEach(function(an){'
+                'var vals=Object.keys(amap[an]).sort();'
+                'if(vals.length<2)return;'
+                'wrap.appendChild(_el("div","ifx-sep"));'
+                'var ar=_el("div","ifx-row");'
+                'var al=_el("span","ifx-lbl");'
+                'al.textContent=an.charAt(0).toUpperCase()+an.slice(1);'
+                'ar.appendChild(al);'
+                'ar.appendChild(_btn("Todos",null,!_st.attrs[an],function(ann){'
+                  'return function(){delete _st.attrs[ann];_apply();_renderNav();};'
+                '}(an)));'
+                'vals.forEach(function(v){'
+                  'var n=_count(_st.fam,_st.sub,_st.sub2,Object.assign({},_st.attrs,function(o){o[an]=v;return o;}({})));'
+                  'ar.appendChild(_btn(v,n,_st.attrs[an]===v,function(ann,vv){'
+                    'return function(){_st.attrs[ann]=vv;_apply();_renderNav();};'
+                  '}(an,v)));'
+                '});'
+                'wrap.appendChild(ar);'
+              '});'
+            '}'
+
+            'nav.innerHTML="";nav.appendChild(wrap);'
+          '}'
+
+          'init();'
+        '})();'
+        '</script>'
+    )
+    return css + js
+
+
 def _build_stock_patch(stock_data, var_suffix):
     """Genera CSS + JS para mostrar unidades en tarjetas Y modal/ficha.
 
@@ -1142,6 +1362,14 @@ def update_html(products):
             log("ERROR: patrón no encontrado dentro de _TG"); return False
         tg_fixed = fix_tienda_html(tg_new)
 
+        # ── Inyectar navegación por familias ─────────────────────
+        nav_patch = _build_nav_patch()
+        if '</body>' in tg_fixed:
+            tg_fixed = tg_fixed.replace('</body>', nav_patch + '</body>', 1)
+        else:
+            tg_fixed += nav_patch
+        log(f"  Tienda: navegación por familias inyectada")
+
         # ── Inyectar patch de unidades en la tienda ───────────────
         to_stock = {}
         for p in products:
@@ -1212,16 +1440,21 @@ def main():
     if not products: sys.exit(1)
 
     # ── Segundo proveedor: Binary Canarias ──────────────────────
+    # La tienda online muestra SOLO productos de Binary.
+    # Megastore sigue descargándose únicamente para actualizar la Zona Apple.
     binary_text = download_binary_csv()
     if binary_text:
         binary_products = process_binary_csv(binary_text)
         if binary_products:
-            products = merge_products(products, binary_products)
+            products = binary_products  # Tienda = solo Binary
+            log(f"  Tienda: usando solo Binary ({len(products)} productos)")
+        else:
+            log("  AVISO: Binary CSV sin productos — manteniendo Megastore en tienda")
     else:
         if BINARY_CSV_URL:
             log("  AVISO: No se pudo descargar el CSV de Binary")
         else:
-            log("  Binary CSV: BINARY_CSV_URL no configurado — omitiendo segundo proveedor")
+            log("  Binary CSV: BINARY_CSV_URL no configurado — tienda mostrará Megastore")
 
     # Save updated cache
     save_img_cache(img_cache)
