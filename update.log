@@ -4005,3 +4005,29 @@
 [2026-03-31 12:06:10]   index.html: 36.3MB | tienda: 2902 | Apple: 588
 [2026-03-31 12:06:10] Completado OK
 [2026-03-31 12:06:10] ==================================================
+[2026-03-31 13:00:29] ==================================================
+[2026-03-31 13:00:29] Infofase catalog updater v3 — con imágenes Icecat
+[2026-03-31 13:00:29]   Cache: 1406 con imagen | 932 nulls PURGADOS para reintentar con cuenta de pago | total ahora 1406
+[2026-03-31 13:00:29] Descargando https://infofase.com/tienda/megastore.csv
+[2026-03-31 13:00:30]   CSV: 503KB (utf-8-sig)
+[2026-03-31 13:00:30]   Delimitador CSV detectado: ';'
+[2026-03-31 13:00:31]   DIAG HTTP 403 [antec|0-761345-40054-1]: {"StatusCode":5,"Code":403,"Error":"Forbidden","Message":"You have wrong ip address for access"}
+[2026-03-31 13:00:31]   DIAG HTTP 403 [oki|01126301]: {"StatusCode":5,"Code":403,"Error":"Forbidden","Message":"You have wrong ip address for access"}
+[2026-03-31 13:00:31]   DIAG HTTP 404 [pro basic|0147]: {"StatusCode":8,"Code":404,"Error":"Not Found","Message":"The requested product is not present in the Icecat database"}
+[2026-03-31 13:00:32]   DIAG HTTP 403 [cecotec|02596]: {"StatusCode":5,"Code":403,"Error":"Forbidden","Message":"You have wrong ip address for access"}
+[2026-03-31 13:00:32]   DIAG HTTP 404 [union memory|03b03-00475700]: {"StatusCode":8,"Code":404,"Error":"Not Found","Message":"The requested product is not present in the Icecat database"}
+[2026-03-31 13:06:25]   Procesados: 2901 | descartados: 375
+[2026-03-31 13:06:25]   Imágenes: 1393 con imagen | 932 sin imagen | 576 Apple (skip)
+[2026-03-31 13:06:25]   Icecat: 932 productos NUEVOS consultados en esta ejecución
+[2026-03-31 13:06:25]   Cache: 1393 productos servidos desde cache
+[2026-03-31 13:06:25]   Cache guardado: 2338 entradas
+[2026-03-31 13:06:25]   Modo: web integrada (_TG)
+[2026-03-31 13:06:28]   Tienda: patch unidades inyectado (2333 prods con stock/transito)
+[2026-03-31 13:06:28]   ZA: 3276 entradas en CSV para cruzar con Zona Apple
+[2026-03-31 13:06:28]   ZA: 593 productos Apple en catálogo
+[2026-03-31 13:06:28]   ZA DIAG MDE14Y/A: stock_csv=0 viajando_csv=0 → qty=0 via=0 net=0 status=agotado
+[2026-03-31 13:06:28]   ZA: 587/593 actualizados | 6 sin match en CSV
+[2026-03-31 13:06:28]   ZA: patch unidades inyectado (275 prods con stock/transito)
+[2026-03-31 13:06:29]   index.html: 36.3MB | tienda: 2901 | Apple: 587
+[2026-03-31 13:06:29] Completado OK
+[2026-03-31 13:06:29] ==================================================
