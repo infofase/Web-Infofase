@@ -128,22 +128,251 @@ def stock_status(stock_val, viajando_val="0"):
     if qty + viajando > 0:         return "transito"
     return "agotado"
 
-def extract_attrs(name):
+def extract_attrs(name, cat_raw=''):
+    """Extrae atributos del nombre del producto para filtros de navegación.
+    Diseñado para los nombres de Binary Canarias. Orientado por categoría.
+    """
     a = {}
-    n = name.lower()
-    m = re.search(r'(\d+)\s*gb\s+(?:ram|ddr)', n)
-    if not m: m = re.search(r'(\d+)\s*gb\s+ram', n)
-    if m: a["ram"] = m.group(1) + "GB"
-    m = re.search(r'(\d+)\s*(tb|gb)\s+(?:ssd|hdd|nvme|emmc)', n)
-    if m: a["storage"] = m.group(1) + m.group(2).upper()
-    m = re.search(r'(\d{1,2}[.,]\d)\s*["\']', n)
-    if m: a["screen"] = m.group(1).replace(",", ".") + '"'
+    n = name  # mantener case para algunos patrones
+    nl = name.lower()
+    cat = cat_raw.lower()
+
+    # ─── PANTALLA / TAMAÑO ────────────────────────────────────────
+    # Patrones: 15.6", 27", 10.36", 11.6"
+    m = re.search(r'(\d{1,2}[.,]\d{1,2})\s*["\u201d]', n)
+    if not m: m = re.search(r'(\d{1,2}[.,]\d{1,2})\s*(?:pulg|pulgadas|inch)', nl)
+    if not m: m = re.search(r'(\b(?:11|13|14|15|16|17|19|21|22|24|27|28|32|34|43|49|65)\b)\s*["\u201d]', n)
+    if m:
+        size = m.group(1).replace(',', '.')
+        # Normalizar a rangos para no fragmentar demasiado
+        try:
+            sz = float(size)
+            if sz < 13:   a['pantalla'] = 'Hasta 13"'
+            elif sz < 14: a['pantalla'] = '13"'
+            elif sz < 15: a['pantalla'] = '14"'
+            elif sz < 16: a['pantalla'] = '15-15.6"'
+            elif sz < 17: a['pantalla'] = '16"'
+            elif sz < 18: a['pantalla'] = '17"'
+            elif sz < 23: a['pantalla'] = '19-22"'
+            elif sz < 25: a['pantalla'] = '23-24"'
+            elif sz < 29: a['pantalla'] = '27-28"'
+            elif sz < 33: a['pantalla'] = '32"'
+            elif sz >= 33: a['pantalla'] = '34" o más'
+        except: pass
+
+    # ─── PROCESADOR / CHIP ────────────────────────────────────────
+    # Intel Core i3/i5/i7/i9, Ryzen 3/5/7/9, Celeron, N-series, M1/M2
     m = re.search(
-        r'(intel\s+(?:core\s+)?(?:i[3579]|ultra\s*[579])[- ]\d+\w*'
-        r'|ryzen\s+[3579][\s\d\w]*'
-        r'|apple\s+m[1-4](?:\s+(?:pro|max|ultra))?)', n, re.I)
-    if m: a["chip"] = m.group(1).strip().title()
+        r'\b(i3|i5|i7|i9)(?:[-\s]\d+\w*)?\b'
+        r'|\b(Ryzen\s+[3579])(?:\s+\d+\w*)?\b'
+        r'|\b(Celeron|Pentium|Atom)\b'
+        r'|\b(N\d{4}[A-Z]?)\b'          # Intel N4020, N5100...
+        r'|\b(Core\s+Ultra\s*[579])\b'
+        r'|\b(M[1-4](?:\s+(?:Pro|Max|Ultra))?)\b'
+        r'|\b(Snapdragon|MediaTek|Helio|Dimensity)\b'
+        r'|\b(A[0-9]{1,2})\s+Bionic\b',
+        n, re.I)
+    if m:
+        chip = next(g for g in m.groups() if g)
+        chip = chip.strip()
+        # Normalizar familias Intel
+        if re.match(r'i[3579]', chip, re.I): a['procesador'] = chip[:2].upper()  # i5
+        elif 'Ryzen' in chip: a['procesador'] = 'AMD ' + chip[:9]
+        elif chip.startswith('N') and chip[1:].isdigit(): a['procesador'] = 'Intel N-series'
+        elif 'Celeron' in chip or 'Pentium' in chip: a['procesador'] = chip.capitalize()
+        elif re.match(r'M[1-4]', chip, re.I): a['procesador'] = 'Apple ' + chip
+        else: a['procesador'] = chip
+
+    # ─── MEMORIA RAM ──────────────────────────────────────────────
+    m = re.search(r'(\d+)\s*Gb\s+(?:RAM|DDR|LPDDR|SODIMM)', n)
+    if not m: m = re.search(r'(?:RAM|DDR\d)\s+(\d+)\s*Gb', n, re.I)
+    # CPU con número de modelo: i7-1360P 32Gb / R7-3700U 8Gb
+    if not m: m = re.search(r'(?:i[3579]|Ryzen|Core|N\d{4}|R[3579]-\d)[\w.-]*\s+(\d+)\s*Gb', n, re.I)
+    # Teléfonos/tablets: tamaño" RAMGb (ej: 6.36" 12Gb / 11" 8Gb)
+    if not m: m = re.search(r'[\d.]+["\u201d]\s+(\d+)\s*Gb\b', n, re.I)
+    if not m: m = re.search(r'\b(\d+)\s*Gb\b(?=.*(?:RAM|DDR|\bW\d\d\b|\bFreeD))', n)
+    if m:
+        ram = int(m.group(1))
+        if ram <= 4:   a['ram'] = '4 GB'
+        elif ram <= 8: a['ram'] = '8 GB'
+        elif ram <= 16:a['ram'] = '16 GB'
+        elif ram <= 32:a['ram'] = '32 GB'
+        else:          a['ram'] = '64 GB o más'
+
+    # ─── ALMACENAMIENTO / DISCO ───────────────────────────────────
+    m = re.search(r'(\d+(?:\.\d+)?)\s*(Tb|Gb)\s*(?:SSD|HDD|NVMe|eMMC|EMMC|NAND|Flash|M\.2|SATA)', n, re.I)
+    if not m: m = re.search(r'(\d+(?:\.\d+)?)\s*(Tb|Gb)SSD', n, re.I)
+    if not m: m = re.search(r'SSD[^\d]*(\d+)\s*(Gb|Tb)', n, re.I)
+    # Portátiles/Tablets: [CPU] [RAM]Gb [storage]Gb — el segundo número Gb
+    if not m: m = re.search(r'(?:i[3579]|Ryzen|Core|N\d{4}|R[3579]-\d)[\w-]*\s+(\d+)\s*Gb\s+(\d+)\s*(Gb|Tb)', n, re.I)
+    # Smartphones/tablets: [tamaño"] [RAM]Gb [storage]Gb/Tb
+    if not m: m = re.search(r'[\d.]+["\u201d]\s+(\d+)\s*Gb\s+(\d+)\s*(Gb|Tb)', n, re.I)
+    # Fallback: si ya tenemos RAM, el siguiente Gb/Tb es el almacenamiento
+    if not m and 'ram' in a:
+        m = re.search(r'\b\d+\s*Gb\s+(\d+)\s*(Gb|Tb)\b', n, re.I)
+    if m:
+        cap  = float(m.group(1))
+        unit = m.group(2).upper()
+        if unit == 'TB': cap_gb = cap * 1000
+        else:            cap_gb = cap
+        if cap_gb <= 128:    a['almacenamiento'] = '128 GB'
+        elif cap_gb <= 256:  a['almacenamiento'] = '256 GB'
+        elif cap_gb <= 512:  a['almacenamiento'] = '512 GB'
+        elif cap_gb <= 1000: a['almacenamiento'] = '1 TB'
+        elif cap_gb <= 2000: a['almacenamiento'] = '2 TB'
+        elif cap_gb <= 4000: a['almacenamiento'] = '4 TB'
+        else:                a['almacenamiento'] = '6 TB o más'
+        # Tipo de disco
+        if re.search(r'\bSSD\b|\bNVMe\b|\bM\.2\b|\beMMC\b', n, re.I):
+            a['tipo_disco'] = 'SSD'
+        elif re.search(r'\bHDD\b|\bSATA\b|\b7200rpm\b|\b5400rpm\b', n, re.I):
+            a['tipo_disco'] = 'HDD'
+
+    # ─── RESOLUCIÓN (monitores, webcams, TVs) ─────────────────────
+    m = re.search(r'\b(4K|UHD|2160p)\b', n, re.I)
+    if m: a['resolucion'] = '4K'
+    elif re.search(r'\b(QHD|2K|2560|1440p|WQHD)\b', n, re.I):
+        a['resolucion'] = 'QHD 2K'
+    elif re.search(r'\b(FHD|Full\s*HD|1080p|1920x1080|FullHD)\b', n, re.I):
+        a['resolucion'] = 'Full HD'
+    elif re.search(r'\b(HD|720p|1280x720)\b', n, re.I):
+        a['resolucion'] = 'HD'
+
+    # ─── TIPO DE PANEL (monitores) ────────────────────────────────
+    m = re.search(r'\b(OLED|AMOLED|QLED)\b', n, re.I)
+    if m: a['panel'] = m.group(1).upper()
+    elif re.search(r'\bIPS\b', n, re.I): a['panel'] = 'IPS'
+    elif re.search(r'\bVA\b', n):        a['panel'] = 'VA'
+    elif re.search(r'\bTN\b', n):        a['panel'] = 'TN'
+
+    # ─── FRECUENCIA DE REFRESCO (monitores, gaming) ───────────────
+    m = re.search(r'(\d+)\s*Hz', n, re.I)
+    if m:
+        hz = int(m.group(1))
+        if hz <= 60:    a['refresco'] = '60 Hz'
+        elif hz <= 75:  a['refresco'] = '75 Hz'
+        elif hz <= 100: a['refresco'] = '100 Hz'
+        elif hz <= 144: a['refresco'] = '144 Hz'
+        elif hz <= 165: a['refresco'] = '165 Hz'
+        else:           a['refresco'] = '240 Hz+'
+
+    # ─── CONECTIVIDAD / CONEXIÓN ──────────────────────────────────
+    conexiones = []
+    if re.search(r'\bUSB[\s-]?C\b|USB\s*Type[\s-]?C', n, re.I): conexiones.append('USB-C')
+    if re.search(r'\bUSB[\s-]?3\b|USB\s*3\.[01]', n, re.I):      conexiones.append('USB 3.0')
+    if re.search(r'\bBluetooth\b|\bBT\b(?!\s*(?:1[89]|[2-9]\d))', n, re.I): conexiones.append('Bluetooth')
+    if re.search(r'\bWi[\s-]?Fi\b|\bWireless\b|\bWF\b', n, re.I): conexiones.append('WiFi')
+    if re.search(r'\bHDMI\b', n, re.I): conexiones.append('HDMI')
+    if re.search(r'\bDisplayPort\b|\bDP\b(?=\s*/M)', n, re.I):   conexiones.append('DisplayPort')
+    if re.search(r'\bVGA\b', n, re.I):  conexiones.append('VGA')
+    if re.search(r'\bNFC\b', n, re.I):  conexiones.append('NFC')
+    if re.search(r'\b4G\b|\bLTE\b', n, re.I): conexiones.append('4G')
+    if re.search(r'\b5G\b', n, re.I):   conexiones.append('5G')
+    if conexiones and any(c in cat for c in ['raton','ratón','teclado','auric','altavoz','sonido','webcam','tablet','smartp','movil','móvil']):
+        # Para periféricos: conectividad como filtro principal
+        if 'Bluetooth' in conexiones or 'WiFi' in conexiones or '4G' in conexiones or '5G' in conexiones:
+            a['conectividad'] = 'Inalámbrico'
+        else:
+            a['conectividad'] = 'Con cable'
+
+    # ─── SISTEMA OPERATIVO (portátiles, ordenadores) ──────────────
+    if any(c in cat for c in ['notebook','portátil','ordenador','barebones']):
+        if re.search(r'\bW11(?:P|H|S)?\b|\bWindows\s*11\b', n, re.I):
+            a['sistema_op'] = 'Windows 11'
+        elif re.search(r'\bW10(?:P|H|S)?\b|\bWindows\s*10\b', n, re.I):
+            a['sistema_op'] = 'Windows 10'
+        elif re.search(r'\bFreeDos\b|\bFree\s*Dos\b|\bLinux\b|\bUbuntu\b', n, re.I):
+            a['sistema_op'] = 'Sin Windows'
+        elif re.search(r'\bNo[\s-]?OS\b|\bNo\s*Sistema\b', n, re.I):
+            a['sistema_op'] = 'Sin Windows'
+
+    # ─── TIPO IMPRESORA ───────────────────────────────────────────
+    if 'impresora' in cat or 'multif' in nl or 'láser' in cat or 'inyección' in cat:
+        if re.search(r'\bMultif\b|\bMultifunción\b', n, re.I): a['tipo_imp'] = 'Multifunción'
+        elif re.search(r'\bLáser\b|\bLaser\b', n, re.I):       a['tipo_imp'] = 'Láser'
+        elif re.search(r'\bTérmica\b|\bTermica\b', n, re.I):   a['tipo_imp'] = 'Térmica'
+        elif re.search(r'\bPlotter\b', n, re.I):                a['tipo_imp'] = 'Plotter'
+        else:                                                    a['tipo_imp'] = 'Inkjet'
+
+        if re.search(r'\bA3\b', n): a['formato_papel'] = 'A3'
+        else:                       a['formato_papel'] = 'A4'
+
+        if re.search(r'\bWi[\s-]?Fi\b|\bWireless\b', n, re.I): a['wifi_imp'] = 'Con WiFi'
+
+    # ─── CATEGORÍA SAI / UPS ──────────────────────────────────────
+    if 'sai' in cat or 'ups' in cat or 'sai' in nl:
+        m = re.search(r'(\d+)\s*VA\b', n, re.I)
+        if m:
+            va = int(m.group(1))
+            if va <= 600:   a['potencia'] = 'Hasta 600 VA'
+            elif va <= 1000:a['potencia'] = '600-1000 VA'
+            elif va <= 1500:a['potencia'] = '1000-1500 VA'
+            elif va <= 2000:a['potencia'] = '1500-2000 VA'
+            else:           a['potencia'] = 'Más de 2000 VA'
+
+    # ─── CATEGORÍA RAM INTERNA (integración) ─────────────────────
+    if 'memori' in cat:
+        m = re.search(r'(DDR[45]?)\s*(\d+)\s*Gb', n, re.I)
+        if m:
+            ddr  = m.group(1).upper()
+            size = int(m.group(2))
+            a['tipo_ram'] = ddr
+            if size <= 8:   a['capacidad_ram'] = '8 GB o menos'
+            elif size <= 16:a['capacidad_ram'] = '16 GB'
+            elif size <= 32:a['capacidad_ram'] = '32 GB'
+            else:           a['capacidad_ram'] = '64 GB+'
+        m = re.search(r'(SODIMM|DIMM)', n, re.I)
+        if m: a['formato_ram'] = m.group(1).upper()
+
+    # ─── CABLES: tipo de conector ─────────────────────────────────
+    if 'cable' in cat or 'latiguillo' in nl:
+        if re.search(r'\bHDMI\b', n, re.I):       a['tipo_cable'] = 'HDMI'
+        elif re.search(r'\bDisplayPort\b|\bDP\b', n, re.I): a['tipo_cable'] = 'DisplayPort'
+        elif re.search(r'\bVGA\b', n, re.I):       a['tipo_cable'] = 'VGA'
+        elif re.search(r'\bDVI\b', n, re.I):       a['tipo_cable'] = 'DVI'
+        elif re.search(r'\bUSB[\s-]?C\b', n, re.I):a['tipo_cable'] = 'USB-C'
+        elif re.search(r'\bRJ45\b|\bCat\.\s*\d', n, re.I): a['tipo_cable'] = 'Red RJ45'
+        elif re.search(r'\bJack\b|\b3\.5\s*mm\b', n, re.I):a['tipo_cable'] = 'Audio Jack'
+        # Longitud
+        m = re.search(r'(\d+(?:[.,]\d+)?)\s*m\b', nl)
+        if m:
+            lng = float(m.group(1).replace(',','.'))
+            if lng <= 0.5:   a['longitud'] = '0.5 m'
+            elif lng <= 1:   a['longitud'] = '1 m'
+            elif lng <= 2:   a['longitud'] = '2 m'
+            elif lng <= 3:   a['longitud'] = '3 m'
+            elif lng <= 5:   a['longitud'] = '5 m'
+            else:            a['longitud'] = 'Más de 5 m'
+
+    # ─── PENDRIVE / MEMORIA FLASH ─────────────────────────────────
+    if 'pendrive' in cat or 'micro sd' in nl or 'microsd' in nl or 'secure digital' in nl:
+        m = re.search(r'(\d+)\s*Gb\b', n, re.I)
+        if m:
+            gb = int(m.group(1))
+            if gb <= 32:    a['capacidad'] = '32 GB'
+            elif gb <= 64:  a['capacidad'] = '64 GB'
+            elif gb <= 128: a['capacidad'] = '128 GB'
+            elif gb <= 256: a['capacidad'] = '256 GB'
+            else:           a['capacidad'] = '512 GB+'
+
+    # ─── SWITCH / ROUTER ──────────────────────────────────────────
+    if 'switch' in cat or 'router' in cat:
+        m = re.search(r'(\d+)\s*x\s*RJ45', n, re.I)
+        if m: a['puertos'] = m.group(1) + ' puertos'
+        if re.search(r'\bPoE\+?\b', n, re.I): a['poe'] = 'Con PoE'
+        if re.search(r'\bGb[Ee]\b|\bGigabit\b|\b1000\b', n, re.I): a['velocidad_red'] = 'Gigabit'
+        elif re.search(r'\b10G\b|10\s*Gb', n, re.I): a['velocidad_red'] = '10 Gb'
+        else: a['velocidad_red'] = '10/100 Mbps'
+
+    # ─── COLOR (si es relevante) ──────────────────────────────────
+    m = re.search(
+        r'\b(Negro|Negra|Blanco|Blanca|Gris|Plata|Plateado|Plateada'
+        r'|Rojo|Roja|Azul|Verde|Naranja|Morado|Rosa|Amarillo'
+        r'|Dorado|Dorada|Black|White|Silver|Gold)\b', n, re.I)
+    if m: a['color'] = m.group(1).capitalize()
+
     return a or None
+
 
 # ── Icecat image lookup ───────────────────────────────────────
 def load_img_cache():
@@ -600,10 +829,8 @@ def process_binary_csv(text):
             p["img"]  = img_url
             p["imgH"] = img_url  # misma URL — el proveedor no da alta resolución separada
 
-        a = extract_attrs(nombre)
+        a = extract_attrs(nombre, cat_raw)
         if a: p["a"] = a
-
-        products.append(p)
 
     log(f"  Binary: {len(products)} productos cargados | {skipped} descartados (cat. no IT) | {no_price} sin precio")
     return products
@@ -879,8 +1106,38 @@ def _build_nav_patch():
             '});'
           '}'
 
-          # Contar productos para estado actual
-          'function _count(f,s,s2,at){'
+          # Mapa de nombres legibles para los atributos
+          'var ATTR_LABELS={'
+            '"pantalla":"Tamaño pantalla",'
+            '"procesador":"Procesador",'
+            '"ram":"Memoria RAM",'
+            '"almacenamiento":"Almacenamiento",'
+            '"tipo_disco":"Tipo de disco",'
+            '"sistema_op":"Sistema operativo",'
+            '"resolucion":"Resolución",'
+            '"panel":"Tipo de panel",'
+            '"refresco":"Tasa de refresco",'
+            '"conectividad":"Conectividad",'
+            '"tipo_cable":"Tipo de cable",'
+            '"longitud":"Longitud",'
+            '"color":"Color",'
+            '"tipo_imp":"Tipo de impresora",'
+            '"formato_papel":"Formato papel",'
+            '"wifi_imp":"WiFi",'
+            '"puertos":"Nº de puertos",'
+            '"velocidad_red":"Velocidad",'
+            '"poe":"PoE",'
+            '"potencia":"Potencia",'
+            '"capacidad":"Capacidad",'
+            '"tipo_ram":"Tipo RAM",'
+            '"capacidad_ram":"Capacidad RAM",'
+            '"formato_ram":"Formato"'
+          '};'
+
+          # Atributos que NO mostrar como filtro (demasiado genéricos o ruidosos)
+          'var ATTR_SKIP={"color":1};'
+
+
             'return _orig.filter(function(p){'
               'if(f&&p.fam!==f)return false;'
               'if(s&&p.sub!==s)return false;'
@@ -996,21 +1253,33 @@ def _build_nav_patch():
               # ── Atributos ──
               'var ak=(_st.fam||"")+"\\x00"+(_st.sub||"");'
               'var amap=_aidx[ak]||{};'
-              'var akeys=Object.keys(amap).sort();'
+              'var akeys=Object.keys(amap).sort(function(a,b){'
+                # Orden de atributos más relevantes primero
+                'var PRI={"pantalla":0,"procesador":1,"ram":2,"almacenamiento":3,'
+                         '"tipo_disco":4,"sistema_op":5,"resolucion":6,"panel":7,'
+                         '"refresco":8,"conectividad":9,"tipo_cable":10,"longitud":11,'
+                         '"puertos":12,"velocidad_red":13,"poe":14,"tipo_imp":15,'
+                         '"formato_papel":16,"wifi_imp":17,"potencia":18,"capacidad":19,'
+                         '"tipo_ram":20,"capacidad_ram":21,"formato_ram":22};'
+                'return (PRI[a]||99)-(PRI[b]||99);'
+              '});'
               'akeys.forEach(function(an){'
+                'if(ATTR_SKIP[an])return;'
                 'var vals=Object.keys(amap[an]).sort();'
                 'if(vals.length<2)return;'
                 'wrap.appendChild(_el("div","ifx-sep"));'
                 'var ar=_el("div","ifx-row");'
                 'var al=_el("span","ifx-lbl");'
-                'al.textContent=an.charAt(0).toUpperCase()+an.slice(1);'
+                'al.textContent=ATTR_LABELS[an]||an;'
                 'ar.appendChild(al);'
                 'ar.appendChild(_btn("Todos",null,!_st.attrs[an],function(ann){'
                   'return function(){delete _st.attrs[ann];_apply();_renderNav();};'
                 '}(an)));'
                 'vals.forEach(function(v){'
-                  'var n=_count(_st.fam,_st.sub,_st.sub2,Object.assign({},_st.attrs,function(o){o[an]=v;return o;}({})));'
-                  'ar.appendChild(_btn(v,n,_st.attrs[an]===v,function(ann,vv){'
+                  'var cnt=_count(_st.fam,_st.sub,_st.sub2,'
+                    'Object.assign({},_st.attrs,(function(o){o[an]=v;return o;})({}))'
+                  ');'
+                  'ar.appendChild(_btn(v,cnt,_st.attrs[an]===v,function(ann,vv){'
                     'return function(){_st.attrs[ann]=vv;_apply();_renderNav();};'
                   '}(an,v)));'
                 '});'
