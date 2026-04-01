@@ -159,16 +159,16 @@ def extract_attrs(name, cat_raw=''):
                 # Solo asignar pantalla para rangos que tienen sentido como pantallas
                 if 5 <= sz <= 100:
                     # Discos duros usan 2.5" / 3.5" — ya filtrado arriba
-                    if sz < 13:      a['pantalla'] = 'Hasta 13"'
-                    elif sz < 14.5:  a['pantalla'] = '13-14"'
-                    elif sz < 15.5:  a['pantalla'] = '14"'
-                    elif sz < 16.5:  a['pantalla'] = '15-16"'
-                    elif sz < 18:    a['pantalla'] = '17"'
-                    elif sz < 23:    a['pantalla'] = '19-22"'
-                    elif sz < 25.5:  a['pantalla'] = '24"'
-                    elif sz < 29:    a['pantalla'] = '27"'
-                    elif sz < 33:    a['pantalla'] = '27-32"'
-                    elif sz >= 33:   a['pantalla'] = '34" o más'
+                    if sz < 13:      a['pantalla'] = 'Hasta 13 pulg.'
+                    elif sz < 14.5:  a['pantalla'] = '13-14 pulg.'
+                    elif sz < 15.5:  a['pantalla'] = '14 pulg.'
+                    elif sz < 16.5:  a['pantalla'] = '15-16 pulg.'
+                    elif sz < 18:    a['pantalla'] = '17 pulg.'
+                    elif sz < 23:    a['pantalla'] = '19-22 pulg.'
+                    elif sz < 25.5:  a['pantalla'] = '24 pulg.'
+                    elif sz < 29:    a['pantalla'] = '27 pulg.'
+                    elif sz < 33:    a['pantalla'] = '27-32 pulg.'
+                    elif sz >= 33:   a['pantalla'] = '34+ pulg.'
             except: pass
 
     # ─── PROCESADOR ──────────────────────────────────────────────
@@ -503,17 +503,17 @@ def extract_attrs(name, cat_raw=''):
         # Normalizar a rangos para no fragmentar demasiado
         try:
             sz = float(size)
-            if sz < 13:   a['pantalla'] = 'Hasta 13"'
-            elif sz < 14: a['pantalla'] = '13"'
-            elif sz < 15: a['pantalla'] = '14"'
-            elif sz < 16: a['pantalla'] = '15-15.6"'
-            elif sz < 17: a['pantalla'] = '16"'
-            elif sz < 18: a['pantalla'] = '17"'
-            elif sz < 23: a['pantalla'] = '19-22"'
-            elif sz < 25: a['pantalla'] = '23-24"'
-            elif sz < 29: a['pantalla'] = '27-28"'
-            elif sz < 33: a['pantalla'] = '32"'
-            elif sz >= 33: a['pantalla'] = '34" o más'
+            if sz < 13:   a['pantalla'] = 'Hasta 13 pulg.'
+            elif sz < 14: a['pantalla'] = '13 pulg.'
+            elif sz < 15: a['pantalla'] = '14 pulg.'
+            elif sz < 16: a['pantalla'] = '15-16 pulg.'
+            elif sz < 17: a['pantalla'] = '16 pulg.'
+            elif sz < 18: a['pantalla'] = '17 pulg.'
+            elif sz < 23: a['pantalla'] = '19-22 pulg.'
+            elif sz < 25: a['pantalla'] = '23-24 pulg.'
+            elif sz < 29: a['pantalla'] = '27-28 pulg.'
+            elif sz < 33: a['pantalla'] = '32 pulg.'
+            elif sz >= 33: a['pantalla'] = '34+ pulg.'
         except: pass
 
     # ─── PROCESADOR / CHIP ────────────────────────────────────────
@@ -1559,72 +1559,15 @@ def ascii_encode(html_str):
 
 # ── Navegación jerárquica por familias ────────────────────────
 def _build_nav_patch(products):
-    """Filtros de atributos — version maxima simplicidad.
-    AIDX precomputado en Python. Sin conteos dinamicos. Solo mostrar y filtrar."""
-    import json as _j
-
-    # Precomputar indice {cat: {attr: [val1,val2,...]}} ordenado
-    aidx_raw = {}
-    for p in products:
-        c = p.get("cat")
-        if not c or not p.get("a"): continue
-        if c not in aidx_raw: aidx_raw[c] = {}
-        for k, v in p["a"].items():
-            if not v or k == "color": continue
-            if k not in aidx_raw[c]: aidx_raw[c][k] = set()
-            aidx_raw[c][k].add(str(v))
-
-    # Convertir a listas, solo attrs con >=2 valores
-    aidx = {}
-    PRI_PY = ["pantalla","procesador","ram","almacenamiento","tipo_disco",
-              "sistema_op","grafica","resolucion","panel","refresco",
-              "conectividad","tipo_conexion","tipo_cable","longitud",
-              "categoria_red","puertos","velocidad_red","poe","gestionable",
-              "tipo_imp","color_imp","formato_papel","wifi_imp","duplex",
-              "potencia_va","capacidad","usb_ver","tipo_ram","capacidad_ram",
-              "velocidad_ram","formato_ram"]
-    for cat, attrs in aidx_raw.items():
-        cat_attrs = {}
-        for k in PRI_PY:  # orden de prioridad
-            if k in attrs and len(attrs[k]) >= 2:
-                def _sort_val(x):
-                    try:
-                        digits = ''.join(c for c in x if c.isdigit() or c == '.')
-                        return (0, float(digits)) if x and x[0].isdigit() and digits else (1, x)
-                    except: return (1, x)
-                vals = sorted(attrs[k], key=_sort_val)
-                cat_attrs[k] = vals
-        # Añadir attrs restantes no en PRI_PY
-        for k, v in attrs.items():
-            if k not in cat_attrs and len(v) >= 2:
-                cat_attrs[k] = sorted(v)
-        if cat_attrs:
-            aidx[cat] = cat_attrs
-
-    AIDX_JSON = _j.dumps(aidx, ensure_ascii=True, separators=(",",":"))
-
-    LBL_PY = {
-        "pantalla":"Tama\u00f1o pantalla","procesador":"Procesador",
-        "ram":"Memoria RAM","almacenamiento":"Almacenamiento",
-        "tipo_disco":"Tipo de disco","sistema_op":"Sistema operativo",
-        "grafica":"Gr\u00e1fica dedicada","resolucion":"Resoluci\u00f3n",
-        "panel":"Tipo de panel","refresco":"Refresco",
-        "conectividad":"Conectividad","tipo_conexion":"Tipo conexi\u00f3n",
-        "tipo_cable":"Tipo cable","longitud":"Longitud",
-        "categoria_red":"Categ. cable","puertos":"N\u00ba puertos",
-        "velocidad_red":"Velocidad","poe":"PoE","gestionable":"Gestionable",
-        "tipo_imp":"Tipo impresora","color_imp":"Color impresi\u00f3n",
-        "formato_papel":"Formato papel","wifi_imp":"WiFi","duplex":"D\u00faplex",
-        "potencia_va":"Potencia","capacidad":"Capacidad",
-        "usb_ver":"USB","tipo_ram":"Tipo RAM",
-        "capacidad_ram":"Capacidad RAM","velocidad_ram":"Velocidad RAM",
-        "formato_ram":"Formato RAM",
-    }
-    LBL_JSON = _j.dumps(LBL_PY, ensure_ascii=True, separators=(",",":"))
+    """Filtros de atributos — version definitiva.
+    - AIDX construido en JavaScript desde window.ALL (sin JSON encoding, sin comillas problematicas)
+    - Object.defineProperty para interceptar cambios en window.ALL (100% fiable)
+    - Se inserta ANTES de filterPanel (no dentro, no afectado por DOM de la tienda)
+    """
 
     css = (
         "<style>"
-        "#ifx-attrs{margin:0}"
+        "#ifx-attrs{margin-bottom:8px}"
         ".ifx-grp{margin-bottom:2px}"
         ".ifx-lbl{font-size:9px;font-weight:700;color:var(--ink4,#9b9b9b);"
         "text-transform:uppercase;letter-spacing:.07em;display:block;"
@@ -1641,107 +1584,199 @@ def _build_nav_patch(products):
         "</style>"
     )
 
-    # AIDX values stored as arrays (pre-sorted in Python, no special chars issues)
-    # Filter function uses p.a[k] directly
-    js_tpl = r"""<script>
+    # Priority order for attrs (no special chars - all ASCII)
+    PRI_LIST = (
+        "pantalla,procesador,ram,almacenamiento,tipo_disco,sistema_op,"
+        "grafica,resolucion,panel,refresco,conectividad,tipo_conexion,"
+        "tipo_cable,longitud,categoria_red,puertos,velocidad_red,poe,"
+        "tipo_imp,color_imp,formato_papel,wifi_imp,potencia_va,capacidad,"
+        "tipo_ram,capacidad_ram,velocidad_ram,formato_ram"
+    )
+
+    LBL_DICT = (
+        "pantalla:'Tama\u00f1o pantalla',"
+        "procesador:'Procesador',"
+        "ram:'Memoria RAM',"
+        "almacenamiento:'Almacenamiento',"
+        "tipo_disco:'Tipo de disco',"
+        "sistema_op:'Sistema operativo',"
+        "grafica:'Gr\u00e1fica dedicada',"
+        "resolucion:'Resoluci\u00f3n',"
+        "panel:'Tipo de panel',"
+        "refresco:'Refresco',"
+        "conectividad:'Conectividad',"
+        "tipo_conexion:'Tipo conexi\u00f3n',"
+        "tipo_cable:'Tipo cable',"
+        "longitud:'Longitud',"
+        "categoria_red:'Categor\u00eda',"
+        "puertos:'N\u00ba puertos',"
+        "velocidad_red:'Velocidad',"
+        "poe:'PoE',"
+        "tipo_imp:'Tipo impresora',"
+        "color_imp:'Color',"
+        "formato_papel:'Formato papel',"
+        "wifi_imp:'WiFi',"
+        "potencia_va:'Potencia',"
+        "capacidad:'Capacidad',"
+        "tipo_ram:'Tipo RAM',"
+        "capacidad_ram:'Capacidad RAM',"
+        "velocidad_ram:'Velocidad RAM',"
+        "formato_ram:'Formato RAM'"
+    )
+
+    js = """<script>
 (function(){
-var AIDX=__AIDX__;
-var LBL=__LBL__;
-var _catALL=null,_curCat=null,_sel={};
+  var LBL={""" + LBL_DICT + """};
+  var PRI='""" + PRI_LIST + """'.split(',');
+  var _aidx=null,_catALL=null,_curCat=null,_sel={},_applying=false;
 
-// Get active cat: all window.ALL products share same cat?
-function _getCat(){
-  var a=window.ALL||[];if(!a.length)return null;
-  var c=a[0]?a[0].cat:null;if(!c)return null;
-  for(var i=1;i<Math.min(a.length,300);i++){if(!a[i]||a[i].cat!==c)return null;}
-  return c;
-}
-
-// Apply attr filter on _catALL, call applyAll
-function _apply(){
-  if(!_catALL)return;
-  var s=_sel,ks=Object.keys(s);
-  window.ALL=ks.length?_catALL.filter(function(p){
-    if(!p.a)return false;
-    for(var i=0;i<ks.length;i++){if(s[ks[i]]&&p.a[ks[i]]!==s[ks[i]])return false;}
-    return true;
-  }):_catALL.slice();
-  if(typeof applyAll==='function')applyAll();
-}
-
-function _el(t,c){var e=document.createElement(t);if(c)e.className=c;return e;}
-
-function _cont(){
-  var c=document.getElementById('ifx-attrs');if(c)return c;
-  c=_el('div');c.id='ifx-attrs';
-  var fp=document.getElementById('filterPanelIn');
-  if(fp){fp.appendChild(c);}
-  else{var g=document.getElementById('grid');
-    if(g&&g.parentNode)g.parentNode.insertBefore(c,g);}
-  return c;
-}
-
-// Render: show AIDX values directly (no dynamic counting)
-function _render(cat){
-  var c=_cont();
-  if(!cat||!AIDX[cat]){c.innerHTML='';return;}
-  var ref=AIDX[cat];
-  var ks=Object.keys(ref);
-  if(!ks.length){c.innerHTML='';return;}
-  var w=_el('div');
-  ks.forEach(function(ak){
-    var vals=ref[ak];if(!vals||!vals.length)return;
-    var g=_el('div','ifx-grp');
-    var l=_el('div','ifx-lbl');l.textContent=LBL[ak]||ak;g.appendChild(l);
-    var r=_el('div','ifx-row');
-    // Todos btn
-    var b=_el('button','ifx-btn'+((!_sel[ak])?' on':''));
-    b.textContent='Todos';
-    b.onclick=(function(k){return function(){delete _sel[k];_apply();_render(_curCat);};})(ak);
-    r.appendChild(b);
-    // Value btns
-    vals.forEach(function(v){
-      var btn=_el('button','ifx-btn'+(_sel[ak]===v?' on':''));
-      btn.textContent=v;
-      btn.onclick=(function(k,vv){return function(){_sel[k]=vv;_apply();_render(_curCat);};})(ak,v);
-      r.appendChild(btn);
+  // Build attr index from product array - pure JS, no JSON encoding issues
+  function buildIdx(prods){
+    var idx={};
+    for(var i=0;i<prods.length;i++){
+      var p=prods[i];
+      var c=p.cat;if(!c||!p.a)continue;
+      if(!idx[c])idx[c]={};
+      var ks=Object.keys(p.a);
+      for(var j=0;j<ks.length;j++){
+        var k=ks[j],v=p.a[k];
+        if(!v||k==='color')continue;
+        if(!idx[c][k])idx[c][k]={};
+        idx[c][k][v]=true;
+      }
+    }
+    // Convert to sorted arrays, keep only attrs with >=2 values
+    var result={};
+    Object.keys(idx).forEach(function(c){
+      var cr={};
+      PRI.forEach(function(k){
+        if(!idx[c][k])return;
+        var vals=Object.keys(idx[c][k]);
+        if(vals.length<2)return;
+        cr[k]=vals.sort(function(a,b){
+          var na=parseFloat(a),nb=parseFloat(b);
+          return(!isNaN(na)&&!isNaN(nb))?na-nb:(a<b?-1:a>b?1:0);
+        });
+      });
+      if(Object.keys(cr).length)result[c]=cr;
     });
-    g.appendChild(r);w.appendChild(g);
-  });
-  c.innerHTML='';c.appendChild(w);
-}
-
-// Update: detect cat change, save catALL, render
-function _upd(){
-  var a=window.ALL||[];
-  var cat=_getCat();
-  if(cat!==_curCat){
-    _curCat=cat;_sel={};
-    _catALL=cat?a.slice():null;
+    return result;
   }
-  _render(cat);
-}
 
-function init(){
-  if(!window.ALL||!window.ALL.length){setTimeout(init,300);return;}
-  // Poll every 400ms
-  var lc=null,ll=0;
-  setInterval(function(){
-    var a=window.ALL||[],cat=_getCat(),l=a.length;
-    if(cat!==lc||l!==ll){lc=cat;ll=l;clearTimeout(window.__it);window.__it=setTimeout(_upd,80);}
-  },400);
-  // Nav clicks
-  var nav=document.getElementById('catNavIn');
-  if(nav)nav.addEventListener('click',function(){setTimeout(_upd,300);},true);
-  setTimeout(_upd,600);
-}
+  // Get active cat: all products in arr share same .cat?
+  function getCat(arr){
+    if(!arr||!arr.length)return null;
+    var c=arr[0]&&arr[0].cat?arr[0].cat:null;
+    if(!c)return null;
+    for(var i=1;i<Math.min(arr.length,300);i++){
+      if(!arr[i]||arr[i].cat!==c)return null;
+    }
+    return c;
+  }
 
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
-else{init();setTimeout(init,900);}
+  function el(t,c){var e=document.createElement(t);if(c)e.className=c;return e;}
+
+  // Get/create our container - inserted BEFORE filterPanel (safe from tienda DOM changes)
+  function getCont(){
+    var c=document.getElementById('ifx-attrs');if(c)return c;
+    c=el('div');c.id='ifx-attrs';
+    var fp=document.getElementById('filterPanel');
+    if(fp&&fp.parentNode){fp.parentNode.insertBefore(c,fp);}
+    else{var g=document.getElementById('grid');
+      if(g&&g.parentNode)g.parentNode.insertBefore(c,g);}
+    return c;
+  }
+
+  // Render filter groups for given cat
+  function render(cat){
+    var c=getCont();
+    if(!cat||!_aidx||!_aidx[cat]){c.innerHTML='';return;}
+    var ref=_aidx[cat];
+    var keys=Object.keys(ref);
+    if(!keys.length){c.innerHTML='';return;}
+    var w=el('div');
+    keys.forEach(function(ak){
+      var vals=ref[ak];if(!vals||!vals.length)return;
+      var g=el('div','ifx-grp');
+      var lbl=el('div','ifx-lbl');lbl.textContent=LBL[ak]||ak;g.appendChild(lbl);
+      var row=el('div','ifx-row');
+      // Todos btn
+      var bt=el('button','ifx-btn'+((!_sel[ak])?' on':''));
+      bt.textContent='Todos';
+      bt.onclick=(function(k){return function(){delete _sel[k];applyFilter();};})(ak);
+      row.appendChild(bt);
+      // Value btns
+      vals.forEach(function(v){
+        var btn=el('button','ifx-btn'+(_sel[ak]===v?' on':''));
+        btn.textContent=v;
+        btn.onclick=(function(k,vv){return function(){_sel[k]=vv;applyFilter();};})(ak,v);
+        row.appendChild(btn);
+      });
+      g.appendChild(row);w.appendChild(g);
+    });
+    c.innerHTML='';c.appendChild(w);
+  }
+
+  // Apply attr selection to catALL, call applyAll
+  function applyFilter(){
+    if(!_catALL)return;
+    var sel=_sel,ks=Object.keys(sel);
+    _applying=true;
+    window.ALL=ks.length?_catALL.filter(function(p){
+      if(!p.a)return false;
+      for(var i=0;i<ks.length;i++){if(sel[ks[i]]&&p.a[ks[i]]!==sel[ks[i]])return false;}
+      return true;
+    }):_catALL.slice();
+    if(typeof applyAll==='function')applyAll();
+    _applying=false;
+    render(_curCat);
+  }
+
+  // Called when tienda updates window.ALL
+  function onAllChange(arr){
+    var cat=getCat(arr);
+    if(cat!==_curCat){_curCat=cat;_sel={};}
+    _catALL=arr.slice();
+    render(cat);
+  }
+
+  function init(){
+    if(!window.ALL||!window.ALL.length){setTimeout(init,300);return;}
+    // Build index from full product list
+    _aidx=buildIdx(window.ALL);
+    // Intercept window.ALL via defineProperty
+    var _arr=window.ALL;
+    try{
+      Object.defineProperty(window,'ALL',{
+        get:function(){return _arr;},
+        set:function(v){
+          _arr=v||[];
+          if(!_applying){
+            clearTimeout(window.__ifxT);
+            window.__ifxT=setTimeout(function(){onAllChange(_arr);},100);
+          }
+        },
+        configurable:true
+      });
+    }catch(e){
+      // Fallback: polling
+      var lc=null,ll=0;
+      setInterval(function(){
+        var a=window.ALL||[],cat=getCat(a),l=a.length;
+        if(cat!==lc||l!==ll){lc=cat;ll=l;
+          clearTimeout(window.__ifxT);
+          window.__ifxT=setTimeout(function(){onAllChange(a);},100);}
+      },500);
+    }
+    // Initial render
+    setTimeout(function(){onAllChange(window.ALL||[]);},600);
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
+  else init();
 })();
 </script>"""
 
-    js = js_tpl.replace('__AIDX__', AIDX_JSON).replace('__LBL__', LBL_JSON)
     return css + js
 
 
