@@ -511,166 +511,323 @@ def get_icecat_img(brand, product_code, cache):
 
 
 
-# ── Binary Canarias — mapeo de categorías ────────────────────────────────────
-# El CSV de Binary usa una jerarquía de 3 niveles: "Nivel1>Nivel2>Nivel3"
-# La mapeamos a las mismas categorías internas que Megastore
-BINARY_CAT_MAP = {
-    # Consumibles
-    'consumibles impresión>tintas':          'consumibles',
-    'consumibles impresión>toner':           'consumibles',
-    'consumibles impresión>otros':           'consumibles',
-    'consumibles varios>pilas':              'consumibles',
-    'consumibles varios>material de oficina':'consumibles',
-    'consumibles varios>consumibles':        'consumibles',
 
-    # Impresoras y escáneres
-    'impresoras y escáner>impresoras inyección': 'impresoras',
-    'impresoras y escáner>impresoras láser':     'impresoras',
-    'impresoras y escáner>impresoras matriciales':'impresoras',
-    'impresoras y escáner>impresoras plotter':   'impresoras',
-    'impresoras y escáner>impresoras etiquetas': 'impresoras',
-    'impresoras y escáner>escáner':              'escaneres',
-    'terminales tpv>impresoras tpv':             'tpv',
-    'terminales tpv>terminal punto venta':       'tpv',
-    'terminales tpv>escáner':                    'escaneres',
+# ── Taxonomía de la tienda Binary ────────────────────────────────────────────
+# Mapea cada ruta de categoría de Binary a (familia, subfamilia) con nombres
+# cortos y claros. Reglas de diseño:
+#   - familia    = nombre del icono superior (máx 2-3 palabras)
+#   - subfamilia = nombre corto (máx 2 palabras), SIN tamaños ni marcas
+#   - Tamaño pantalla, capacidad disco, SO → atributos, NO subfamilias
+#   - "Seminuevo", "Varios", "Otros" → absorbidos en subfamilia principal
+#   - Categorías no IT (hogar, mascotas, ocio físico) → None = descartado
 
-    # Portátiles
-    'ordenadores portátiles>notebooks':          'portatiles',
-    'ordenadores portátiles>accesorios notebook':'perifericos',
-    'ordenadores portátiles>maletines':          'fundas',
+_FAM_SUB_MAP = [
+    # ─── PORTÁTILES ─────────────────────────────────────────────
+    ("ordenadores portátiles>notebooks",             ("Portátiles",     "Portátiles")),
+    ("ordenadores portátiles>maletines>mochilas",    ("Fundas / Bolsas","Mochilas")),
+    ("ordenadores portátiles>maletines>trolley",     ("Fundas / Bolsas","Trolleys")),
+    ("ordenadores portátiles>maletines>maletines",   ("Fundas / Bolsas","Maletines")),
+    ("ordenadores portátiles>maletines>fundas",      ("Fundas / Bolsas","Fundas portátil")),
+    ("ordenadores portátiles>maletines",             ("Fundas / Bolsas","Fundas portátil")),
+    ("ordenadores portátiles>accesorios notebook>alimentación", ("Portátiles","Cargadores portátil")),
+    ("ordenadores portátiles>accesorios notebook>soportes",     ("Portátiles","Soportes portátil")),
+    ("ordenadores portátiles>accesorios notebook",   ("Portátiles",     "Accesorios portátil")),
 
-    # Ordenadores / componentes
-    'ordenadores>ordenadores':                   'componentes',
-    'ordenadores>servidores':                    'componentes',
-    'ordenadores>barebones':                     'componentes',
-    'ordenadores>raspberry':                     'componentes',
-    'integración>microprocesadores':             'componentes',
-    'integración>placas base':                   'componentes',
-    'integración>memorias':                      'componentes',
-    'integración>carcasas':                      'componentes',
-    'integración>fuentes alimentación':          'componentes',
-    'integración>refrigeración':                 'componentes',
-    'integración>tarjetas gráficas':             'componentes',
-    'integración>tarjetas de sonido':            'componentes',
-    'integración>controladoras':                 'componentes',
-    'integración>ópticos':                       'componentes',
+    # ─── ORDENADORES ────────────────────────────────────────────
+    ("ordenadores>ordenadores otras marcas>all in one",   ("Ordenadores","All-in-One")),
+    ("ordenadores>ordenadores otras marcas>torre sobremesa",("Ordenadores","Torre sobremesa")),
+    ("ordenadores>ordenadores otras marcas>pcs compactos",("Ordenadores","Mini PC")),
+    ("ordenadores>ordenadores otras marcas",              ("Ordenadores","Sobremesa")),
+    ("ordenadores>ordenadores qi",                        ("Ordenadores","Mini PC")),
+    ("ordenadores>barebones",                             ("Ordenadores","Barebone")),
+    ("ordenadores>servidores",                            ("Ordenadores","Servidores")),
+    ("ordenadores>raspberry",                             ("Ordenadores","Raspberry Pi")),
+    ("ordenadores>extensiones de garantía",               None),
 
-    # Disco interno
-    'integración>discos internos':               'disco_interno',
+    # ─── COMPONENTES ────────────────────────────────────────────
+    ("integración>microprocesadores",    ("Componentes","Procesadores")),
+    ("integración>placas base",          ("Componentes","Placas base")),
+    ("integración>memorias",             ("Componentes","Memorias RAM")),
+    ("integración>discos internos>discos ssd m.2",     ("Componentes","SSD M.2")),
+    ("integración>discos internos>discos ssd sata",    ("Componentes","SSD SATA")),
+    ("integración>discos internos>sata 3.5",           ("Componentes","HDD 3.5\"")),
+    ("integración>discos internos>sata 2.5",           ("Componentes","HDD 2.5\"")),
+    ("integración>discos internos>discos servidor",    ("Componentes","HDD Servidor")),
+    ("integración>discos internos",                    ("Componentes","Discos internos")),
+    ("integración>fuentes alimentación",  ("Componentes","Fuentes alimentación")),
+    ("integración>carcasas>servidor",     ("Componentes","Carcasas servidor")),
+    ("integración>carcasas>carcasas de rack",("Componentes","Rack")),
+    ("integración>carcasas",              ("Componentes","Carcasas PC")),
+    ("integración>tarjetas gráficas",     ("Componentes","Tarjetas gráficas")),
+    ("integración>tarjetas de sonido",    ("Componentes","Tarjetas de sonido")),
+    ("integración>refrigeración",         ("Componentes","Refrigeración")),
+    ("integración>controladoras",         ("Componentes","Controladoras")),
+    ("integración>ópticos",               ("Componentes","Unidades ópticas")),
 
-    # Monitores
-    'periféricos>monitores':                     'monitores',
-    'imagen y sonido>televisores':               'monitores',
-    'imagen y sonido>proyectores':               'monitores',
-    'imagen y sonido>marcos digitales':          'monitores',
+    # ─── MONITORES ──────────────────────────────────────────────
+    ("periféricos>monitores",            ("Monitores","Monitores")),
+    ("imagen y sonido>televisores",      ("Monitores","Televisores")),
+    ("imagen y sonido>proyectores>pantallas",("Monitores","Pantallas proyección")),
+    ("imagen y sonido>proyectores>lámparas", ("Monitores","Lámparas proyector")),
+    ("imagen y sonido>proyectores",      ("Monitores","Proyectores")),
+    ("imagen y sonido>marcos digitales", ("Monitores","Marcos digitales")),
+    ("imagen y sonido>soportes tv",      ("Monitores","Soportes y brazos")),
+    ("imagen y sonido>home cinema>barras de sonido",("Audio / Vídeo","Barras de sonido")),
+    ("imagen y sonido>home cinema",      ("Audio / Vídeo","Home Cinema")),
 
-    # Smartphones y tablets
-    'telefonía / smartphones>telefonía móvil':   'smartphones',
-    'tablets / ebooks>tabletas':                 'tablets',
-    'tablets / ebooks>libros electrónicos':      'tablets',
-    'tablets / ebooks>pda':                      'tablets',
+    # ─── IMPRESORAS ─────────────────────────────────────────────
+    ("impresoras y escáner>impresoras inyección de tinta>impresoras multifunción",("Impresoras","Multifunción tinta")),
+    ("impresoras y escáner>impresoras inyección de tinta", ("Impresoras","Inyección de tinta")),
+    ("impresoras y escáner>impresoras láser>multifunción b/n",  ("Impresoras","Multifunción láser BN")),
+    ("impresoras y escáner>impresoras láser>multifunción color",("Impresoras","Multifunción láser color")),
+    ("impresoras y escáner>impresoras láser>color",        ("Impresoras","Láser color")),
+    ("impresoras y escáner>impresoras láser>monocromo",    ("Impresoras","Láser monocromo")),
+    ("impresoras y escáner>impresoras láser",              ("Impresoras","Láser")),
+    ("impresoras y escáner>impresoras matriciales",        ("Impresoras","Matriciales")),
+    ("impresoras y escáner>impresoras plotter",            ("Impresoras","Plotter")),
+    ("impresoras y escáner>impresoras etiquetas>rotuladoras",("Impresoras","Rotuladoras")),
+    ("impresoras y escáner>impresoras etiquetas",          ("Impresoras","Etiquetas")),
+    ("impresoras y escáner>impresoras 3d",                 ("Impresoras","Impresoras 3D")),
+    ("impresoras y escáner>tabletas digitalizadoras",      ("Periféricos","Tabletas digitalizadoras")),
+    ("impresoras y escáner>manualidades",                  ("Impresoras","Manualidades")),
+    ("impresoras y escáner>extensión garantía",            None),
 
-    # Periféricos
-    'periféricos>ratones':                       'perifericos',
-    'periféricos>teclados':                      'perifericos',
-    'periféricos>hubs y adaptadores':            'perifericos',
-    'periféricos>memoria flash':                 'perifericos',
-    'periféricos>pendrive':                      'perifericos',
-    'periféricos>accesorios streaming':          'perifericos',
-    'periféricos>discos y cajas externos':       'nas',
-    'multimedia>webcam':                         'perifericos',
-    'multimedia>sonido':                         'audio',
-    'multimedia>sintonizadoras':                 'perifericos',
-    'multimedia>reproductores':                  'perifericos',
-    'multimedia>discos y cajas multimedia':      'perifericos',
-    'imagen y sonido>home cinema':               'audio',
-    'imagen y sonido>fotografía':                'camaras',
+    # ─── ESCÁNERES ──────────────────────────────────────────────
+    ("impresoras y escáner>escáner>boligrafos digitales",  ("Escáneres","Bolígrafos digitales")),
+    ("impresoras y escáner>escáner>escáner de mano",       ("Escáneres","Escáner de mano")),
+    ("impresoras y escáner>escáner>escáner de mesa",       ("Escáneres","Escáner de mesa")),
+    ("impresoras y escáner>escáner",                       ("Escáneres","Escáneres")),
+    ("terminales tpv>escáner>escáner de código de barras", ("TPV / Comercio","Lectores código barras")),
+    ("terminales tpv>escáner>lectores de tarjeta",         ("TPV / Comercio","Lectores tarjeta")),
+    ("terminales tpv>escáner",                             ("TPV / Comercio","Escáneres TPV")),
 
-    # Cables
-    'periféricos>cables':                        'cables',
-    'redes y cctv>cables':                       'cable_red',
+    # ─── CONSUMIBLES ────────────────────────────────────────────
+    ("consumibles impresión>tintas marcas",      ("Consumibles","Tintas de marca")),
+    ("consumibles impresión>tintas genericas",   ("Consumibles","Tintas genéricas")),
+    ("consumibles impresión>toner marcas",       ("Consumibles","Tóner de marca")),
+    ("consumibles impresión>toner genericos",    ("Consumibles","Tóner genérico")),
+    ("consumibles impresión>otros consumibles>cintas",  ("Consumibles","Cintas")),
+    ("consumibles impresión>otros consumibles>bobinas", ("Consumibles","Bobinas")),
+    ("consumibles impresión>otros consumibles>papel",   ("Consumibles","Papel impresión")),
+    ("consumibles impresión>otros consumibles>sellos",  ("Consumibles","Sellos")),
+    ("consumibles impresión>otros consumibles",         ("Consumibles","Otros consumibles")),
+    ("consumibles varios>pilas y baterías>alcalinas",   ("Consumibles","Pilas alcalinas")),
+    ("consumibles varios>pilas y baterías>recargables", ("Consumibles","Pilas recargables")),
+    ("consumibles varios>pilas y baterías>cargadores",  ("Consumibles","Cargadores pilas")),
+    ("consumibles varios>pilas y baterías",             ("Consumibles","Pilas y baterías")),
+    ("consumibles varios>material de oficina>papelería",("Consumibles","Papelería")),
+    ("consumibles varios>material de oficina>mochilas", ("Fundas / Bolsas","Mochilas")),
+    ("consumibles varios>material de oficina",          ("Consumibles","Material de oficina")),
+    ("consumibles varios>consumibles grabación",        ("Consumibles","Cintas grabación")),
 
-    # Redes
-    'redes y cctv>switch y routers':             'redes',
-    'redes y cctv>wifi':                         'redes',
-    'redes y cctv>lan':                          'redes',
-    'redes y cctv>cámaras ip':                   'redes',
-    'redes y cctv>cctv':                         'redes',
-    'redes y cctv>armarios':                     'redes',
-    'redes y cctv>fax':                          'redes',
+    # ─── PERIFÉRICOS ────────────────────────────────────────────
+    ("periféricos>ratones>ratones gaming",    ("Periféricos","Ratones gaming")),
+    ("periféricos>ratones>ratones notebook",  ("Periféricos","Ratones portátil")),
+    ("periféricos>ratones>punteros",          ("Periféricos","Presentadores")),
+    ("periféricos>ratones>trackball",         ("Periféricos","Trackball")),
+    ("periféricos>ratones",                   ("Periféricos","Ratones")),
+    ("periféricos>teclados>teclados gaming",  ("Periféricos","Teclados gaming")),
+    ("periféricos>teclados>teclados + ratón", ("Periféricos","Teclado + ratón")),
+    ("periféricos>teclados>teclados mini",    ("Periféricos","Teclados mini")),
+    ("periféricos>teclados",                  ("Periféricos","Teclados")),
+    ("periféricos>hubs y adaptadores>adaptadores bluetooth", ("Periféricos","Adaptadores BT")),
+    ("periféricos>hubs y adaptadores>docks - kvm",           ("Periféricos","Docks y KVM")),
+    ("periféricos>hubs y adaptadores>hub hdmi",              ("Periféricos","Splitters HDMI")),
+    ("periféricos>hubs y adaptadores>hubs usb",              ("Periféricos","Hubs USB")),
+    ("periféricos>hubs y adaptadores>adaptadores usb",       ("Periféricos","Adaptadores USB")),
+    ("periféricos>hubs y adaptadores",        ("Periféricos","Hubs y adaptadores")),
+    ("periféricos>sais y regletas>sais",      ("SAI / UPS",  "SAI / UPS")),
+    ("periféricos>sais y regletas>regletas",  ("SAI / UPS",  "Regletas")),
+    ("periféricos>sais y regletas",           ("SAI / UPS",  "SAI / UPS")),
+    ("periféricos>accesorios streaming",      ("Periféricos","Accesorios streaming")),
 
-    # NAS y almacenamiento externo
-    'periféricos>discos y cajas externos>cajas servidor nas': 'nas',
-    'periféricos>discos y cajas externos>discos externos red':'nas',
+    # ─── ALMACENAMIENTO / FLASH ─────────────────────────────────
+    ("periféricos>pendrive",                  ("Periféricos","Pendrives")),
+    ("periféricos>memoria flash>lectores",    ("Periféricos","Lectores tarjeta")),
+    ("periféricos>memoria flash>micro secure digital",("Periféricos","MicroSD")),
+    ("periféricos>memoria flash>secure digital",      ("Periféricos","Tarjetas SD")),
+    ("periféricos>memoria flash",             ("Periféricos","Memoria flash")),
+    ("periféricos>discos y cajas externos>discos ssd externos",("Discos Externos","SSD externo")),
+    ("periféricos>discos y cajas externos>discos externos red", ("NAS","NAS")),
+    ("periféricos>discos y cajas externos>cajas servidor nas",  ("NAS","Cajas NAS")),
+    ("periféricos>discos y cajas externos>discos externos",     ("Discos Externos","HDD externo")),
+    ("periféricos>discos y cajas externos>cajas sata 2.5",      ("Discos Externos","Cajas 2.5\"")),
+    ("periféricos>discos y cajas externos>cajas sata 3.5",      ("Discos Externos","Cajas 3.5\"")),
+    ("periféricos>discos y cajas externos>cajas ssd",           ("Discos Externos","Cajas SSD")),
+    ("periféricos>discos y cajas externos",                     ("Discos Externos","Discos externos")),
 
-    # SAI / UPS
-    'periféricos>sais y regletas':               'sai_ups',
+    # ─── CABLES ─────────────────────────────────────────────────
+    ("periféricos>cables>video",              ("Cables",    "Vídeo")),
+    ("periféricos>cables>datos",              ("Cables",    "Datos")),
+    ("periféricos>cables>alimentación",       ("Cables",    "Alimentación")),
+    ("periféricos>cables>televisión",         ("Cables",    "TV / RF")),
+    ("periféricos>cables>conectores de red",  ("Cables Red","Conectores")),
+    ("periféricos>cables>cables de red",      ("Cables Red","Cables red")),
+    ("periféricos>cables>latiguillos de red", ("Cables Red","Latiguillos")),
+    ("periféricos>cables",                    ("Cables",    "Cables")),
 
-    # Powerbank / fundas
-    'tablets / ebooks>accesorios pad y tablet>alimentación y powerbank': 'powerbank',
-    'tablets / ebooks>accesorios pad y tablet>fundas':                   'fundas',
-    'ordenadores portátiles>maletines>fundas':                           'fundas',
-    'ordenadores portátiles>maletines>mochilas':                         'fundas',
-    'telefonía / smartphones>accesorios de telefonía móvil>fundas':      'fundas',
+    # ─── REDES ──────────────────────────────────────────────────
+    ("redes y cctv>switch y routers>switch 10gbit",     ("Redes","Switch 10G")),
+    ("redes y cctv>switch y routers>switch 10/100/1000",("Redes","Switch Gigabit")),
+    ("redes y cctv>switch y routers>switch 10/100",     ("Redes","Switch Fast")),
+    ("redes y cctv>switch y routers>routers adsl",      ("Redes","Routers ADSL")),
+    ("redes y cctv>switch y routers>routers",           ("Redes","Routers")),
+    ("redes y cctv>switch y routers>kvm",               ("Redes","KVM")),
+    ("redes y cctv>switch y routers",                   ("Redes","Switches")),
+    ("redes y cctv>wifi>puntos de acceso",              ("Redes","Puntos de acceso")),
+    ("redes y cctv>wifi>antenas",                       ("Redes","Antenas WiFi")),
+    ("redes y cctv>wifi>tarjetas de red wireless",      ("Redes","Tarjetas WiFi")),
+    ("redes y cctv>wifi>servidores de impresión",       ("Redes","Servidores impresión")),
+    ("redes y cctv>wifi",                               ("Redes","WiFi")),
+    ("redes y cctv>lan>powerline",                      ("Redes","Powerline")),
+    ("redes y cctv>lan>tarjetas de red",                ("Redes","Tarjetas de red")),
+    ("redes y cctv>lan",                                ("Redes","LAN")),
+    ("redes y cctv>cámaras ip>cámaras ip wireless",     ("Redes","Cámaras IP WiFi")),
+    ("redes y cctv>cámaras ip>cámaras ip lan",          ("Redes","Cámaras IP LAN")),
+    ("redes y cctv>cámaras ip",                         ("Redes","Cámaras IP")),
+    ("redes y cctv>cctv>cámaras ip",                    ("Redes","Cámaras IP")),
+    ("redes y cctv>cctv>videograbadores",               ("Redes","Videograbadores")),
+    ("redes y cctv>cctv",                               ("Redes","CCTV")),
+    ("redes y cctv>armarios y cajas>armarios",          ("Redes","Armarios rack")),
+    ("redes y cctv>armarios y cajas",                   ("Redes","Cajas rack")),
+    ("redes y cctv>fax",                                ("Redes","Fax / Módem")),
+    ("redes y cctv>cables>cables de red",               ("Cables Red","Cables red")),
+    ("redes y cctv>cables>latiguillos de red",          ("Cables Red","Latiguillos")),
+    ("redes y cctv>cables>conectores de red",           ("Cables Red","Conectores")),
+    ("redes y cctv>cables>video",                       ("Cables",    "Vídeo")),
+    ("redes y cctv>cables>datos",                       ("Cables",    "Datos")),
+    ("redes y cctv>cables>alimentación",                ("Cables",    "Alimentación")),
+    ("redes y cctv>cables",                             ("Cables Red","Cables")),
 
-    # Wearables / smartwatch
-    'telefonía / smartphones>accesorios de telefonía móvil>smartwatch':  'wearables',
-    'telefonía / smartphones>accesorios de telefonía móvil>pulseras':    'wearables',
+    # ─── AUDIO / VÍDEO ──────────────────────────────────────────
+    ("multimedia>sonido>auriculares y micrófonos",      ("Audio / Vídeo","Auriculares")),
+    ("multimedia>sonido>altavoces",                     ("Audio / Vídeo","Altavoces")),
+    ("multimedia>sonido>tarjetas de sonido externas",   ("Audio / Vídeo","Tarjetas sonido")),
+    ("multimedia>sonido",                               ("Audio / Vídeo","Sonido")),
+    ("multimedia>webcam",                               ("Periféricos","Webcams")),
+    ("multimedia>sintonizadoras y capturadores",        ("Audio / Vídeo","Capturadoras")),
+    ("multimedia>reproductores",                        ("Audio / Vídeo","Reproductores")),
+    ("multimedia>discos y cajas multimedia",            ("Audio / Vídeo","Media Players")),
+    ("imagen y sonido>fotografía y video>cámaras fotográficas reflex",   ("Cámaras","Réflex")),
+    ("imagen y sonido>fotografía y video>cámaras fotográficas compactas",("Cámaras","Compactas")),
+    ("imagen y sonido>fotografía y video>cámaras de video",              ("Cámaras","Vídeo")),
+    ("imagen y sonido>fotografía y video",              ("Cámaras","Fotografía y vídeo")),
 
-    # Software
-    'software':                                  'software',
-    'software esd':                              'software',
+    # ─── SMARTPHONES ────────────────────────────────────────────
+    ("telefonía / smartphones>telefonía móvil y smartphones",("Smartphones","Smartphones")),
+    ("telefonía / smartphones>accesorios de telefonía móvil>fundas y carcasas",("Fundas / Bolsas","Fundas móvil")),
+    ("telefonía / smartphones>accesorios de telefonía móvil>protectores de pantalla",("Smartphones","Protectores pantalla")),
+    ("telefonía / smartphones>accesorios de telefonía móvil>smartwatch",   ("Wearables","Smartwatch")),
+    ("telefonía / smartphones>accesorios de telefonía móvil>pulseras smartband",("Wearables","Smartband")),
+    ("telefonía / smartphones>accesorios de telefonía móvil",              ("Smartphones","Accesorios móvil")),
+    ("telefonía / smartphones>telefonía fija e ip>telefonía ip",           ("Telefonía Fija","VoIP")),
+    ("telefonía / smartphones>telefonía fija e ip>telefonía fija",         ("Telefonía Fija","Teléfonos fijos")),
+    ("telefonía / smartphones>telefonía fija e ip",                        ("Telefonía Fija","Telefonía IP")),
 
-    # Soportes TV
-    'imagen y sonido>soportes tv':               'monitores',
+    # ─── TABLETS ────────────────────────────────────────────────
+    ("tablets / ebooks>tabletas>apple ipad",            ("Tablets","iPad")),
+    ("tablets / ebooks>tabletas>android",               ("Tablets","Tablets Android")),
+    ("tablets / ebooks>tabletas",                       ("Tablets","Tablets")),
+    ("tablets / ebooks>libros electrónicos",            ("Tablets","eBooks")),
+    ("tablets / ebooks>accesorios pad y tablet>alimentación y powerbank",("Power Bank","Power Bank")),
+    ("tablets / ebooks>accesorios pad y tablet>fundas pad y tablet",("Fundas / Bolsas","Fundas tablet")),
+    ("tablets / ebooks>accesorios pad y tablet>protectores de pantalla",("Tablets","Protectores pantalla")),
+    ("tablets / ebooks>accesorios pad y tablet>soportes",("Tablets","Soportes tablet")),
+    ("tablets / ebooks>accesorios pad y tablet>stylus",  ("Tablets","Stylus")),
+    ("tablets / ebooks>accesorios pad y tablet>teclados y ratones",("Tablets","Teclados para tablet")),
+    ("tablets / ebooks>accesorios pad y tablet",         ("Tablets","Accesorios tablet")),
+    ("tablets / ebooks>accesorios libros",               ("Tablets","Accesorios eBook")),
 
-    # Gaming
-    'juegos y consolas':                         'perifericos',
+    # ─── TPV / COMERCIO ─────────────────────────────────────────
+    ("terminales tpv>impresoras tpv",                        ("TPV / Comercio","Impresoras TPV")),
+    ("terminales tpv>terminal punto venta>cajones",          ("TPV / Comercio","Cajones portamonedas")),
+    ("terminales tpv>terminal punto venta>monitores y display",("TPV / Comercio","Monitores TPV")),
+    ("terminales tpv>terminal punto venta>tpv montados",     ("TPV / Comercio","TPV completos")),
+    ("terminales tpv>terminal punto venta",                  ("TPV / Comercio","Terminales TPV")),
 
-    # Hogar / electrodomésticos → descartados (fuera del core IT)
-    # 'hogar / electrónica consumo': None,  → se descartan
-}
+    # ─── GAMING ─────────────────────────────────────────────────
+    ("juegos y consolas>gaming pc>sillas",          ("Gaming","Sillas gaming")),
+    ("juegos y consolas>gaming pc>mesas",           ("Gaming","Mesas gaming")),
+    ("juegos y consolas>gaming pc>alfombrillas",    ("Gaming","Alfombrillas")),
+    ("juegos y consolas>gaming pc>volantes",        ("Gaming","Volantes")),
+    ("juegos y consolas>gaming pc>joysticks",       ("Gaming","Joysticks")),
+    ("juegos y consolas>gaming pc>mandos",          ("Gaming","Mandos")),
+    ("juegos y consolas>gaming pc",                 ("Gaming","Accesorios gaming")),
+    ("juegos y consolas>accesorios consolas>nintendo switch",("Gaming","Nintendo Switch")),
+    ("juegos y consolas>accesorios consolas>playstation ps5",("Gaming","PlayStation 5")),
+    ("juegos y consolas>accesorios consolas>xbox one / series",("Gaming","Xbox")),
+    ("juegos y consolas>accesorios consolas",       ("Gaming","Consolas accesorios")),
+    ("juegos y consolas>consolas",                  ("Gaming","Consolas")),
+    ("juegos y consolas>videojuegos",               None),
 
-def categorize_binary(categoria_str):
-    """Mapea la categoría jerárquica de Binary a categoría interna.
-    Prueba de más específica a más general.
-    Devuelve None para categorías no IT (hogar, mascotas, etc.).
+    # ─── SOFTWARE ───────────────────────────────────────────────
+    ("software esd",                                ("Software","Software digital")),
+    ("software>antivirus",                          ("Software","Antivirus")),
+    ("software>paquetes office",                    ("Software","Office")),
+    ("software>sistemas operativos>windows 11",     ("Software","Windows 11")),
+    ("software>sistemas operativos>windows server", ("Software","Windows Server")),
+    ("software>sistemas operativos",                ("Software","Sistemas operativos")),
+    ("software>utilidades>diseño",                  ("Software","Diseño")),
+    ("software>utilidades",                         ("Software","Utilidades")),
+    ("servicios",                                   None),
+
+    # ─── DESCARTADOS (fuera ámbito IT) ──────────────────────────
+    ("hogar / electrónica consumo>electrodom",      None),
+    ("hogar / electrónica consumo>menaje",          None),
+    ("hogar / electrónica consumo>mascotas",        None),
+    ("hogar / electrónica consumo>cuidado personal",None),
+    ("hogar / electrónica consumo>descanso",        None),
+    ("hogar / electrónica consumo>ferretería",      None),
+    ("hogar / electrónica consumo>minicadenas",     None),
+    ("hogar / electrónica consumo>ocio>bicicleta",  None),
+    ("hogar / electrónica consumo>ocio>patines",    None),
+    ("hogar / electrónica consumo>ocio>ciclomotor", None),
+    ("hogar / electrónica consumo>ocio>optica",     None),
+    ("hogar / electrónica consumo>ocio",            None),
+    ("hogar / electrónica consumo>aire acondicionado",None),
+    ("hogar / electrónica consumo>energia",         None),
+    ("hogar / electrónica consumo>iluminacion",     None),
+    ("hogar / electrónica consumo>gps",             None),
+    ("hogar / electrónica consumo>seguridad",       None),
+    ("hogar / electrónica consumo>destructoras",    None),
+    ("repuestos",                                   None),
+]
+
+def get_fam_sub(cat_raw):
+    """Devuelve (familia, subfamilia) limpias para una ruta de categoría de Binary.
+    Prueba prefijos de más largo a más corto. Devuelve None si está descartada.
     """
-    if not categoria_str:
+    if not cat_raw:
         return None
-    cat = categoria_str.strip().lower()
-
-    # Excluir explícitamente categorías no IT
-    excluded = [
-        'hogar / electrónica consumo>electrodom',
-        'hogar / electrónica consumo>menaje',
-        'hogar / electrónica consumo>mascotas',
-        'hogar / electrónica consumo>cuidado personal',
-        'hogar / electrónica consumo>descanso',
-        'hogar / electrónica consumo>ferretería',
-        'hogar / electrónica consumo>minicadenas',
-        'hogar / electrónica consumo>ocio',
-        'hogar / electrónica consumo>aire acondicionado',
-        'hogar / electrónica consumo>energia',
-        'hogar / electrónica consumo>iluminacion',
-        'hogar / electrónica consumo>gps',
-        'hogar / electrónica consumo>seguridad',
-        'repuestos',
-        'servicios',
-        'juegos y consolas>videojuegos',
-        'juegos y consolas>consolas',
-        'juegos y consolas>accesorios consolas',
-    ]
-    for ex in excluded:
-        if cat.startswith(ex):
-            return None
-
-    # Intentar coincidencia de más largo a más corto
-    for key in sorted(BINARY_CAT_MAP.keys(), key=len, reverse=True):
-        if cat.startswith(key):
-            return BINARY_CAT_MAP[key]
-
+    key = cat_raw.strip().lower()
+    for prefix, result in _FAM_SUB_MAP:
+        if key.startswith(prefix):
+            return result
     return None
+
+
+def categorize_binary(cat_raw):
+    """Devuelve código interno de categoría o None si hay que descartar."""
+    result = get_fam_sub(cat_raw)
+    if result is None:
+        return None
+    fam = result[0].lower()
+    _codes = {
+        'portátiles':'portatiles','ordenadores':'componentes','componentes':'componentes',
+        'monitores':'monitores','impresoras':'impresoras','escáneres':'escaneres',
+        'consumibles':'consumibles','periféricos':'perifericos','cables':'cables',
+        'cables red':'cable_red','redes':'redes','audio / vídeo':'audio',
+        'smartphones':'smartphones','tablets':'tablets','discos externos':'disco_externo',
+        'nas':'nas','fundas / bolsas':'fundas','power bank':'powerbank',
+        'cámaras':'camaras','wearables':'wearables','sai / ups':'sai_ups',
+        'tpv / comercio':'tpv','gaming':'gaming','software':'software',
+        'telefonía fija':'perifericos',
+    }
+    for k, v in _codes.items():
+        if k in fam:
+            return v
+    return 'otros'
+
 
 
 def download_binary_csv():
@@ -812,11 +969,11 @@ def process_binary_csv(text):
             "_cod": codigo,          # código original Binary (para deduplicación)
         }
 
-        # Jerarquía de categorías para navegación (Nivel1>Nivel2>Nivel3)
-        cat_parts = [c.strip() for c in cat_raw.split('>')]
-        if len(cat_parts) >= 1 and cat_parts[0]: p["fam"]  = cat_parts[0]
-        if len(cat_parts) >= 2 and cat_parts[1]: p["sub"]  = cat_parts[1]
-        if len(cat_parts) >= 3 and cat_parts[2]: p["sub2"] = cat_parts[2]
+        # Jerarquía de categorías para navegación — nombres limpios via get_fam_sub
+        fam_sub = get_fam_sub(cat_raw)
+        if fam_sub:
+            p["fam"] = fam_sub[0]
+            p["sub"] = fam_sub[1]
 
         if canon_v > 0:  p["c"]   = canon_v
         if st == "stock" and qty > 0:
