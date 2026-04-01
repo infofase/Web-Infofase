@@ -1559,14 +1559,9 @@ def ascii_encode(html_str):
 
 # ── Navegación jerárquica por familias ────────────────────────
 def _build_nav_patch(products):
-    """Filtros de atributos. Precomputa el índice en Python y lo embebe en JS.
-    Detecta categoría activa via p.cat en window.ALL (100% fiable).
-    Inserta filtros en filterPanelIn cuando la tienda cambia de categoría.
-    """
-    import json as _json
-    from collections import defaultdict
+    import json as _j
 
-    # ── Precomputar índice {cat: {attrKey: {value: count}}} ──────
+    # Build AIDX at Python time
     aidx = {}
     for p in products:
         c = p.get("cat")
@@ -1576,34 +1571,30 @@ def _build_nav_patch(products):
             if not v or k == "color": continue
             if k not in aidx[c]: aidx[c][k] = {}
             aidx[c][k][v] = aidx[c][k].get(v, 0) + 1
-    # Solo attrs con ≥2 valores (útiles para filtrar)
-    aidx_clean = {}
-    for cat, attrs in aidx.items():
-        filtered = {k: vals for k, vals in attrs.items() if len(vals) >= 2}
-        if filtered:
-            aidx_clean[cat] = filtered
+    aidx_clean = {cat: {k: v for k, v in attrs.items() if len(v) >= 2}
+                  for cat, attrs in aidx.items()}
+    aidx_clean = {cat: a for cat, a in aidx_clean.items() if a}
+    AIDX_JSON = _j.dumps(aidx_clean, ensure_ascii=True, separators=(",",":"))
 
-    AIDX_JSON = _json.dumps(aidx_clean, ensure_ascii=False, separators=(",",":"))
-
-    LBL = _json.dumps({
-        "pantalla":"Tamaño pantalla","procesador":"Procesador",
+    LBL = _j.dumps({
+        "pantalla":"Tama\u00f1o pantalla","procesador":"Procesador",
         "ram":"Memoria RAM","almacenamiento":"Almacenamiento",
         "tipo_disco":"Tipo de disco","sistema_op":"Sistema operativo",
-        "grafica":"Gráfica dedicada","resolucion":"Resolución",
+        "grafica":"Gr\u00e1fica dedicada","resolucion":"Resoluci\u00f3n",
         "panel":"Tipo de panel","refresco":"Refresco",
-        "conectividad":"Conectividad","tipo_conexion":"Tipo conexión",
+        "conectividad":"Conectividad","tipo_conexion":"Tipo conexi\u00f3n",
         "tipo_cable":"Tipo cable","longitud":"Longitud",
-        "categoria_red":"Categoría cable","puertos":"Nº puertos",
+        "categoria_red":"Categor\u00eda cable","puertos":"N\u00ba puertos",
         "velocidad_red":"Velocidad red","poe":"PoE","gestionable":"Gestionable",
-        "tipo_imp":"Tipo impresora","color_imp":"Color impresión",
-        "formato_papel":"Formato papel","wifi_imp":"WiFi","duplex":"Dúplex",
+        "tipo_imp":"Tipo impresora","color_imp":"Color impresi\u00f3n",
+        "formato_papel":"Formato papel","wifi_imp":"WiFi","duplex":"D\u00faplex",
         "potencia_va":"Potencia","capacidad":"Capacidad",
         "usb_ver":"USB","tipo_ram":"Tipo RAM",
         "capacidad_ram":"Capacidad RAM","velocidad_ram":"Velocidad RAM",
         "formato_ram":"Formato RAM",
-    }, ensure_ascii=False, separators=(",",":"))
+    }, ensure_ascii=True, separators=(",",":"))
 
-    PRI = _json.dumps({
+    PRI = _j.dumps({
         "pantalla":0,"procesador":1,"ram":2,"almacenamiento":3,
         "tipo_disco":4,"sistema_op":5,"grafica":6,"resolucion":7,
         "panel":8,"refresco":9,"conectividad":10,"tipo_conexion":11,
@@ -1617,159 +1608,151 @@ def _build_nav_patch(products):
     css = (
         "<style>"
         "#ifx-attrs{margin:0}"
-        ".ifx-group{margin-bottom:2px}"
-        ".ifx-albl{font-size:9px;font-weight:700;color:var(--ink4,#9b9b9b);"
-          "text-transform:uppercase;letter-spacing:.07em;display:block;"
-          "margin:10px 0 4px;padding-top:8px;"
-          "border-top:1px solid var(--bdr,rgba(0,0,0,.08))}"
-        ".ifx-arow{display:flex;flex-wrap:wrap;gap:4px}"
-        ".ifx-abtn{font-size:11px;font-weight:500;padding:3px 10px;"
-          "border-radius:20px;border:1.5px solid var(--bdr2,rgba(0,0,0,.13));"
-          "background:var(--bg,#fff);color:var(--ink2,#555);"
-          "cursor:pointer;white-space:nowrap;transition:.12s}"
-        ".ifx-abtn:hover{border-color:var(--or,#F57008);color:var(--or,#F57008)}"
-        ".ifx-abtn.on{background:var(--or,#F57008);color:#fff;"
-          "border-color:var(--or,#F57008)}"
-        ".ifx-acnt{font-size:9px;opacity:.65;margin-left:2px}"
+        ".ifx-grp{margin-bottom:2px}"
+        ".ifx-lbl{font-size:9px;font-weight:700;color:var(--ink4,#9b9b9b);"
+        "text-transform:uppercase;letter-spacing:.07em;display:block;"
+        "margin:10px 0 4px;padding-top:8px;"
+        "border-top:1px solid var(--bdr,rgba(0,0,0,.08))}"
+        ".ifx-row{display:flex;flex-wrap:wrap;gap:4px}"
+        ".ifx-btn{font-size:11px;font-weight:500;padding:3px 10px;"
+        "border-radius:20px;border:1.5px solid var(--bdr2,rgba(0,0,0,.13));"
+        "background:var(--bg,#fff);color:var(--ink2,#555);"
+        "cursor:pointer;white-space:nowrap;transition:.12s}"
+        ".ifx-btn:hover{border-color:var(--or,#F57008);color:var(--or,#F57008)}"
+        ".ifx-btn.on{background:var(--or,#F57008);color:#fff;"
+        "border-color:var(--or,#F57008)}"
+        ".ifx-cnt{font-size:9px;opacity:.65;margin-left:2px}"
         "</style>"
     )
 
-    # ── JS embebido con índice precomputado ───────────────────────
-    js = """<script>
-(function(){
-  var AIDX=""" + AIDX_JSON + """;
-  var LBL=""" + LBL + """;
-  var PRI=""" + PRI + """;
-  var _orig=null,_sel={},_curCat=null;
+    # JS as a multiline string to avoid quote conflicts
+    js_template = r"""<script>(function(){
+var AIDX=__AIDX__;
+var LBL=__LBL__;
+var PRI=__PRI__;
+var _catALL=null,_curCat=null,_sel={};
 
-  // Detectar categoría: todos los productos en window.ALL tienen mismo cat?
-  function _detectCat(){
-    var arr=window.ALL||[];
-    if(!arr.length)return null;
-    var c=arr[0]&&arr[0].cat?arr[0].cat:null;
-    if(!c)return null;
-    var lim=Math.min(arr.length,300);
-    for(var i=1;i<lim;i++){if(!arr[i]||arr[i].cat!==c)return null;}
-    return c;
-  }
+function _cat(arr){
+  if(!arr||!arr.length)return null;
+  var c=arr[0]&&arr[0].cat?arr[0].cat:null;
+  if(!c)return null;
+  for(var i=1;i<Math.min(arr.length,300);i++){if(!arr[i]||arr[i].cat!==c)return null;}
+  return c;
+}
 
-  // Contar productos de _orig con cat=cat y attrs=at
-  function _count(cat,at){
-    var ks=Object.keys(at);
-    return _orig.filter(function(p){
-      if(p.cat!==cat)return false;
-      if(ks.length&&!p.a)return false;
-      for(var i=0;i<ks.length;i++){
-        var k=ks[i];if(at[k]&&(!p.a||p.a[k]!==at[k]))return false;
-      }return true;
-    }).length;
-  }
+function _apply(){
+  if(!_catALL)return;
+  var sel=_sel,ks=Object.keys(sel);
+  window.ALL=ks.length?_catALL.filter(function(p){
+    if(!p.a)return false;
+    for(var i=0;i<ks.length;i++){var k=ks[i];if(sel[k]&&p.a[k]!==sel[k])return false;}
+    return true;
+  }):_catALL.slice();
+  if(typeof applyAll==='function')applyAll();
+}
 
-  // Aplicar selección de attrs → filtrar window.ALL → llamar applyAll
-  function _applyAttrs(){
-    var cat=_curCat,sel=_sel,ks=Object.keys(sel);
-    if(!cat){window.ALL=_orig.slice();}
-    else if(!ks.length){
-      window.ALL=_orig.filter(function(p){return p.cat===cat;});
-    }else{
-      window.ALL=_orig.filter(function(p){
-        if(p.cat!==cat)return false;
-        if(!p.a)return false;
-        for(var i=0;i<ks.length;i++){
-          var k=ks[i];if(sel[k]&&p.a[k]!==sel[k])return false;
-        }return true;
-      });
+function _el(t,c){var e=document.createElement(t);if(c)e.className=c;return e;}
+
+function _cont(){
+  var c=document.getElementById('ifx-attrs');
+  if(c)return c;
+  c=_el('div');c.id='ifx-attrs';
+  var fp=document.getElementById('filterPanelIn');
+  if(fp){fp.appendChild(c);return c;}
+  var g=document.getElementById('grid');
+  if(g&&g.parentNode)g.parentNode.insertBefore(c,g);
+  return c;
+}
+
+function _render(cat,catArr){
+  var c=_cont();
+  if(!cat||!AIDX[cat]||!catArr||!catArr.length){c.innerHTML='';return;}
+  var AC={};
+  catArr.forEach(function(p){
+    if(!p.a)return;
+    var ks=Object.keys(p.a);
+    for(var i=0;i<ks.length;i++){
+      var k=ks[i],v=p.a[k];
+      if(!v||k==='color')continue;
+      if(!AC[k])AC[k]={};
+      AC[k][v]=(AC[k][v]||0)+1;
     }
-    if(typeof applyAll==='function')applyAll();
-  }
-
-  function _el(t,c){var e=document.createElement(t);if(c)e.className=c;return e;}
-
-  // Obtener/crear contenedor: dentro de filterPanelIn
-  function _getCont(){
-    var c=document.getElementById('ifx-attrs');
-    if(c)return c;
-    c=_el('div');c.id='ifx-attrs';
-    var fp=document.getElementById('filterPanelIn');
-    if(fp){fp.appendChild(c);return c;}
-    var grid=document.getElementById('grid');
-    if(grid&&grid.parentNode)grid.parentNode.insertBefore(c,grid);
-    return c;
-  }
-
-  // Renderizar filtros para el cat activo
-  function _render(cat){
-    var c=_getCont();
-    if(!cat||!AIDX[cat]){c.innerHTML='';return;}
-    var amap=AIDX[cat];
-    var keys=Object.keys(amap).sort(function(a,b){
-      return(PRI[a]||99)-(PRI[b]||99);
+  });
+  var ref=AIDX[cat];
+  var keys=Object.keys(ref).filter(function(k){
+    return AC[k]&&Object.keys(AC[k]).length>=2;
+  }).sort(function(a,b){return(PRI[a]||99)-(PRI[b]||99);});
+  if(!keys.length){c.innerHTML='';return;}
+  var wrap=_el('div');
+  keys.forEach(function(ak){
+    var grp=_el('div','ifx-grp');
+    var lbl=_el('div','ifx-lbl');lbl.textContent=LBL[ak]||ak;grp.appendChild(lbl);
+    var row=_el('div','ifx-row');
+    var bt=_el('button','ifx-btn'+((!_sel[ak])?' on':''));
+    bt.textContent='Todos';
+    bt.onclick=(function(k){return function(){delete _sel[k];_apply();_render(_curCat,_catALL);};})(ak);
+    row.appendChild(bt);
+    var vals=Object.keys(AC[ak]).sort(function(a,b){
+      var na=parseFloat(a),nb=parseFloat(b);
+      return(!isNaN(na)&&!isNaN(nb))?na-nb:(a<b?-1:a>b?1:0);
     });
-    if(!keys.length){c.innerHTML='';return;}
-    var wrap=_el('div');
-    keys.forEach(function(ak){
-      var grp=_el('div','ifx-group');
-      var lbl=_el('div','ifx-albl');lbl.textContent=LBL[ak]||ak;grp.appendChild(lbl);
-      var row=_el('div','ifx-arow');
-      // Botón "Todos"
-      var bt=_el('button','ifx-abtn'+((!_sel[ak])?' on':''));
-      bt.textContent='Todos';
-      bt.onclick=(function(k){return function(){delete _sel[k];_applyAttrs();};})(ak);
-      row.appendChild(bt);
-      // Valores ordenados
-      var vals=Object.keys(amap[ak]).sort(function(a,b){
-        var na=parseFloat(a),nb=parseFloat(b);
-        return(!isNaN(na)&&!isNaN(nb))?na-nb:(a<b?-1:a>b?1:0);
-      });
-      vals.forEach(function(v){
-        var cnt=_count(cat,Object.assign({},_sel,(function(o){o[ak]=v;return o;})({})));
-        if(cnt===0)return;
-        var btn=_el('button','ifx-abtn'+(_sel[ak]===v?' on':''));
-        btn.innerHTML=v+"<span class='ifx-acnt'>("+cnt+")</span>";
-        btn.onclick=(function(k,vv){return function(){_sel[k]=vv;_applyAttrs();};})(ak,v);
-        row.appendChild(btn);
-      });
-      grp.appendChild(row);wrap.appendChild(grp);
+    vals.forEach(function(v){
+      var cnt=catArr.filter(function(p){
+        if(!p.a||p.a[ak]!==v)return false;
+        for(var k in _sel){if(k!==ak&&_sel[k]&&p.a[k]!==_sel[k])return false;}
+        return true;
+      }).length;
+      if(!cnt)return;
+      var btn=_el('button','ifx-btn'+(_sel[ak]===v?' on':''));
+      btn.innerHTML=v+'<span class="ifx-cnt">('+cnt+')</span>';
+      btn.onclick=(function(k,vv){return function(){_sel[k]=vv;_apply();_render(_curCat,_catALL);};})(ak,v);
+      row.appendChild(btn);
     });
-    c.innerHTML='';c.appendChild(wrap);
-  }
+    grp.appendChild(row);wrap.appendChild(grp);
+  });
+  c.innerHTML='';c.appendChild(wrap);
+}
 
-  // Update: detectar cat y renderizar
-  function _update(){
-    if(!_orig)return;
-    var cat=_detectCat();
-    if(cat!==_curCat){_curCat=cat;_sel={};}
-    _render(cat);
-  }
+function _update(){
+  var arr=window.ALL||[];
+  var cat=_cat(arr);
+  if(cat!==_curCat){_curCat=cat;_sel={};_catALL=cat?arr.slice():null;}
+  _render(cat,_catALL);
+}
 
-  // Init: esperar a que window.ALL esté listo
-  function init(){
-    if(!window.ALL||!window.ALL.length){setTimeout(init,300);return;}
-    _orig=window.ALL.slice();
-    // Polling cada 400ms para detectar cambios de categoría
-    var lastCat=null,lastLen=0;
-    setInterval(function(){
-      var arr=window.ALL||[];
-      var cat=_detectCat();
-      var len=arr.length;
-      if(cat!==lastCat||len!==lastLen){
-        lastCat=cat;lastLen=len;
-        clearTimeout(window.__ifxT);
-        window.__ifxT=setTimeout(_update,80);
-      }
-    },400);
-    // Escuchar clicks en catNav
-    var nav=document.getElementById('catNavIn');
-    if(nav)nav.addEventListener('click',function(){setTimeout(_update,300);},true);
-    setTimeout(_update,600);
-  }
+function _poll(){
+  var lastCat=null,lastLen=-1;
+  setInterval(function(){
+    var arr=window.ALL||[];
+    var cat=_cat(arr);
+    var len=arr.length;
+    if(cat!==lastCat||(cat&&!Object.keys(_sel).length&&Math.abs(len-lastLen)>5)){
+      lastCat=cat;lastLen=len;
+      clearTimeout(window.__ifxT);
+      window.__ifxT=setTimeout(_update,80);
+    }
+  },400);
+}
 
-  if(document.readyState==='loading')
-    document.addEventListener('DOMContentLoaded',init);
-  else{init();setTimeout(init,800);}
-})();
-</script>"""
+function init(){
+  if(!window.ALL||!window.ALL.length){setTimeout(init,300);return;}
+  _poll();
+  var nav=document.getElementById('catNavIn');
+  if(nav)nav.addEventListener('click',function(){
+    setTimeout(function(){
+      var arr=window.ALL||[];var cat=_cat(arr);
+      if(cat!==_curCat){_curCat=cat;_sel={};_catALL=cat?arr.slice():null;}
+      _render(cat,_catALL);
+    },300);
+  },true);
+  setTimeout(_update,500);
+}
 
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
+else{init();setTimeout(init,800);}
+})();</script>"""
+
+    js = js_template.replace('__AIDX__', AIDX_JSON).replace('__LBL__', LBL).replace('__PRI__', PRI)
     return css + js
 
 
