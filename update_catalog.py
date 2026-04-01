@@ -1559,30 +1559,24 @@ def ascii_encode(html_str):
 
 # ── Navegación jerárquica por familias ────────────────────────
 def _build_nav_patch():
-    """Filtros de atributos. Usa polling + MutationObserver sobre filterPanelIn.
-    Se inserta DESPUÉS de filterPanel (no dentro) para evitar bucles de mutación.
-    """
+    """Filtros de atributos. Lee la categoría activa del DOM del nav."""
+
     css = (
         '<style>'
         '#ifx-attrs{margin:0 0 4px}'
         '.ifx-group{margin-bottom:2px}'
-        '.ifx-albl{'
-          'font-size:9px;font-weight:700;'
-          'color:var(--ink4,#9b9b9b);'
-          'text-transform:uppercase;letter-spacing:.07em;'
-          'display:block;margin:10px 0 4px;'
-          'padding-top:8px;'
-          'border-top:1px solid var(--bdr,rgba(0,0,0,.08))'
-        '}'
+        '.ifx-albl{font-size:9px;font-weight:700;color:var(--ink4,#9b9b9b);'
+          'text-transform:uppercase;letter-spacing:.07em;display:block;'
+          'margin:10px 0 4px;padding-top:8px;'
+          'border-top:1px solid var(--bdr,rgba(0,0,0,.08))}'
         '.ifx-arow{display:flex;flex-wrap:wrap;gap:4px}'
-        '.ifx-abtn{'
-          'font-size:11px;font-weight:500;padding:3px 10px;'
+        '.ifx-abtn{font-size:11px;font-weight:500;padding:3px 10px;'
           'border-radius:20px;border:1.5px solid var(--bdr2,rgba(0,0,0,.13));'
           'background:var(--bg,#fff);color:var(--ink2,#555);'
-          'cursor:pointer;white-space:nowrap;transition:.12s'
-        '}'
+          'cursor:pointer;white-space:nowrap;transition:.12s}'
         '.ifx-abtn:hover{border-color:var(--or,#F57008);color:var(--or,#F57008)}'
-        '.ifx-abtn.on{background:var(--or,#F57008);color:#fff;border-color:var(--or,#F57008)}'
+        '.ifx-abtn.on{background:var(--or,#F57008);color:#fff;'
+          'border-color:var(--or,#F57008)}'
         '.ifx-acnt{font-size:9px;opacity:.65;margin-left:2px}'
         '</style>'
     )
@@ -1618,14 +1612,16 @@ def _build_nav_patch():
 
     js_lines = [
         '<script>(function(){',
-        'var _orig=null,_aidx={},_sel={},_curFam=null;',
+        'var _orig=null,_aidx={},_catFam={},_sel={},_curFam=null;',
         f'var LBL={LBL};var PRI={PRI};',
         'var SKIP={color:1};',
 
-        # Build index: for each family, collect {attrKey: {value: count}}
+        # Build: index by fam AND build cat→fam map
         'function _build(){',
         '_orig.forEach(function(p){',
-        'var f=p.fam;if(!f||!p.a)return;',
+        'var f=p.fam,c=p.cat;',
+        'if(f&&c&&!_catFam[c])_catFam[c]=f;',
+        'if(!f||!p.a)return;',
         'if(!_aidx[f])_aidx[f]={};',
         'Object.keys(p.a).forEach(function(k){',
         'var v=p.a[k];if(!v||SKIP[k])return;',
@@ -1634,54 +1630,80 @@ def _build_nav_patch():
         '});});',
         '}',
 
-        # Detect active family: all products in window.ALL share same fam?
-        'function _detectFam(){',
-        'var arr=window.ALL||[];if(!arr.length)return null;',
+        # Get active fam: 3 strategies in order of reliability
+        'function _getActiveFam(){',
+        # Strategy 1: read active button text from catNavIn
+        'var nav=document.getElementById("catNavIn");',
+        'if(nav){',
+        'var btns=nav.querySelectorAll("button,a,.cat-btn,.nav-item");',
+        'for(var i=0;i<btns.length;i++){',
+        'var b=btns[i];',
+        'if(b.classList.contains("active")||b.classList.contains("on")||',
+        'b.getAttribute("aria-selected")==="true"||',
+        'b.style.color||b.style.borderColor){',
+        'var txt=(b.textContent||"").trim().split("\\n")[0].split("(")[0].trim();',
+        'if(txt&&txt!=="Todos"&&_aidx[txt])return txt;',
+        '}}',
+        '}',
+        # Strategy 2: check if window.ALL all share same fam (when filtered)
+        'var arr=window.ALL||[];',
+        'if(arr.length&&arr.length<((_orig&&_orig.length)||99999)){',
         'var f=arr[0]&&arr[0].fam?arr[0].fam:null;',
-        'if(!f)return null;',
-        'var lim=Math.min(arr.length,300);',
-        'for(var i=1;i<lim;i++){if(!arr[i]||arr[i].fam!==f)return null;}',
-        'return f;',
+        'if(f){',
+        'var same=true;',
+        'var lim=Math.min(arr.length,200);',
+        'for(var j=1;j<lim;j++){if(!arr[j]||arr[j].fam!==f){same=false;break;}}',
+        'if(same)return f;',
+        '}}',
+        # Strategy 3: check if window.ALL all share same cat, map to fam
+        'if(arr.length&&arr.length<((_orig&&_orig.length)||99999)){',
+        'var c=arr[0]&&arr[0].cat?arr[0].cat:null;',
+        'if(c&&_catFam[c]){',
+        'var sameC=true;',
+        'var lim2=Math.min(arr.length,200);',
+        'for(var k=1;k<lim2;k++){if(!arr[k]||arr[k].cat!==c){sameC=false;break;}}',
+        'if(sameC)return _catFam[c];',
+        '}}',
+        'return null;',
         '}',
 
-        # Count _orig products matching fam + attr selection
+        # Count products matching fam + attr selection
         'function _count(f,at){',
         'var ks=Object.keys(at);',
         'return _orig.filter(function(p){',
         'if(p.fam!==f)return false;',
         'if(ks.length&&!p.a)return false;',
-        'for(var i=0;i<ks.length;i++){',
-        'var k=ks[i];if(at[k]&&(!p.a||p.a[k]!==at[k]))return false;',
-        '}return true;}).length;',
+        'for(var i=0;i<ks.length;i++){var k=ks[i];',
+        'if(at[k]&&(!p.a||p.a[k]!==at[k]))return false;}',
+        'return true;}).length;',
         '}',
 
         # Apply attr filter to window.ALL and call applyAll
         'function _applyAttrs(){',
         'var f=_curFam,sel=_sel,ks=Object.keys(sel);',
         'if(!f){window.ALL=_orig.slice();}',
-        'else if(!ks.length){window.ALL=_orig.filter(function(p){return p.fam===f;});}',
-        'else{window.ALL=_orig.filter(function(p){',
+        'else if(!ks.length){',
+        'window.ALL=_orig.filter(function(p){return p.fam===f;});',
+        '}else{',
+        'window.ALL=_orig.filter(function(p){',
         'if(p.fam!==f)return false;if(!p.a)return false;',
         'for(var i=0;i<ks.length;i++){var k=ks[i];',
         'if(sel[k]&&p.a[k]!==sel[k])return false;}',
-        'return true;});}',
+        'return true;});',
+        '}',
         'if(typeof applyAll==="function")applyAll();',
         '}',
 
         # DOM helper
         'function _el(t,c){var e=document.createElement(t);if(c)e.className=c;return e;}',
 
-        # Get/create container AFTER filterPanel (sibling, not child — avoids mutation loops)
+        # Get/create container — inserted AFTER filterPanel as sibling
         'function _getCont(){',
         'var c=document.getElementById("ifx-attrs");',
         'if(c)return c;',
         'c=_el("div");c.id="ifx-attrs";',
-        # Insert after filterPanel
         'var fp=document.getElementById("filterPanel");',
-        'if(fp&&fp.parentNode){',
-        'fp.parentNode.insertBefore(c,fp.nextSibling);',
-        'return c;}',
-        # Fallback: before grid
+        'if(fp&&fp.parentNode){fp.parentNode.insertBefore(c,fp.nextSibling);return c;}',
         'var grid=document.getElementById("grid");',
         'if(grid&&grid.parentNode)grid.parentNode.insertBefore(c,grid);',
         'return c;',
@@ -1692,7 +1714,8 @@ def _build_nav_patch():
         'var c=_getCont();',
         'if(!fam||!_aidx[fam]){c.innerHTML="";return;}',
         'var amap=_aidx[fam];',
-        'var keys=Object.keys(amap).filter(function(k){return Object.keys(amap[k]).length>=2;});',
+        'var keys=Object.keys(amap).filter(function(k){',
+        'return Object.keys(amap[k]).length>=2;});',
         'keys.sort(function(a,b){return(PRI[a]||99)-(PRI[b]||99);});',
         'if(!keys.length){c.innerHTML="";return;}',
         'var wrap=_el("div");',
@@ -1700,12 +1723,10 @@ def _build_nav_patch():
         'var grp=_el("div","ifx-group");',
         'var lbl=_el("div","ifx-albl");lbl.textContent=LBL[ak]||ak;grp.appendChild(lbl);',
         'var row=_el("div","ifx-arow");',
-        # Todos btn
         'var bt=_el("button","ifx-abtn"+((!_sel[ak])?" on":""));',
         'bt.textContent="Todos";',
         'bt.onclick=(function(k){return function(){delete _sel[k];_applyAttrs();};})(ak);',
         'row.appendChild(bt);',
-        # Value btns sorted
         'var vals=Object.keys(amap[ak]).sort(function(a,b){',
         'var na=parseFloat(a),nb=parseFloat(b);',
         'return(!isNaN(na)&&!isNaN(nb))?na-nb:(a<b?-1:a>b?1:0);});',
@@ -1720,35 +1741,31 @@ def _build_nav_patch():
         'c.innerHTML="";c.appendChild(wrap);',
         '}',
 
-        # Central update function
+        # Central update — called by any trigger
         'function _update(){',
-        'var fam=_detectFam();',
+        'var fam=_getActiveFam();',
         'if(fam!==_curFam){_curFam=fam;_sel={};}',
         '_render(fam);',
         '}',
 
-        # Watch filterPanelIn for tienda updates (MutationObserver)
-        # filterPanelIn is DIFFERENT from our container → no mutation loop
-        'function _watchFilterPanel(){',
-        'var fp=document.getElementById("filterPanelIn");',
-        'if(!fp){setTimeout(_watchFilterPanel,400);return;}',
-        'new MutationObserver(function(){',
-        'clearTimeout(window.__ifxT);',
-        'window.__ifxT=setTimeout(_update,100);',
-        '}).observe(fp,{childList:true,subtree:true});',
-        '}',
-
-        # Also poll window.ALL length+fam as backup
+        # Poll every 400ms — simplest and most reliable trigger
         'function _startPoll(){',
-        'var lastLen=0,lastFam=null;',
+        'var lastFam=null,lastLen=0;',
         'setInterval(function(){',
-        'var arr=window.ALL||[];',
-        'var fam=_detectFam();',
-        'if(arr.length!==lastLen||fam!==lastFam){',
-        'lastLen=arr.length;lastFam=fam;',
+        'var fam=_getActiveFam();',
+        'var len=(window.ALL||[]).length;',
+        'if(fam!==lastFam||len!==lastLen){',
+        'lastFam=fam;lastLen=len;',
         'clearTimeout(window.__ifxT);',
         'window.__ifxT=setTimeout(_update,80);',
-        '}},300);',
+        '}},400);',
+        '}',
+
+        # Also listen for clicks on catNavIn
+        'function _watchNav(){',
+        'var nav=document.getElementById("catNavIn");',
+        'if(nav)nav.addEventListener("click",function(){',
+        'setTimeout(_update,250);},true);',
         '}',
 
         # Init
@@ -1756,14 +1773,14 @@ def _build_nav_patch():
         'if(!window.ALL||!window.ALL.length){setTimeout(init,300);return;}',
         '_orig=window.ALL.slice();',
         '_build();',
-        '_watchFilterPanel();',
         '_startPoll();',
+        '_watchNav();',
         'setTimeout(_update,500);',
         '}',
 
         'if(document.readyState==="loading")',
         'document.addEventListener("DOMContentLoaded",init);',
-        'else{init();setTimeout(init,700);}',
+        'else{init();setTimeout(init,800);}',
         '})();</script>',
     ]
 
