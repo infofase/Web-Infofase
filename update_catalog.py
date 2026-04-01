@@ -1559,20 +1559,22 @@ def ascii_encode(html_str):
 
 # ── Navegación jerárquica por familias ────────────────────────
 def _build_nav_patch():
-    """Inyecta filtros de atributos en el panel de filtros de la tienda.
-    Intercepta applyAll() para detectar categoría activa y renderizar attrs.
+    """Filtros de atributos. Usa polling + MutationObserver sobre filterPanelIn.
+    Se inserta DESPUÉS de filterPanel (no dentro) para evitar bucles de mutación.
     """
     css = (
         '<style>'
-        '#ifx-attrs{padding:0}'
+        '#ifx-attrs{margin:0 0 4px}'
         '.ifx-group{margin-bottom:2px}'
         '.ifx-albl{'
-          'font-size:9px;font-weight:700;color:var(--ink4,#9b9b9b);'
+          'font-size:9px;font-weight:700;'
+          'color:var(--ink4,#9b9b9b);'
           'text-transform:uppercase;letter-spacing:.07em;'
-          'display:flex;align-items:center;gap:5px;margin:8px 0 4px;'
-          'padding-top:6px;border-top:1px solid var(--bdr,rgba(0,0,0,.08))'
+          'display:block;margin:10px 0 4px;'
+          'padding-top:8px;'
+          'border-top:1px solid var(--bdr,rgba(0,0,0,.08))'
         '}'
-        '.ifx-arow{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}'
+        '.ifx-arow{display:flex;flex-wrap:wrap;gap:4px}'
         '.ifx-abtn{'
           'font-size:11px;font-weight:500;padding:3px 10px;'
           'border-radius:20px;border:1.5px solid var(--bdr2,rgba(0,0,0,.13));'
@@ -1580,11 +1582,8 @@ def _build_nav_patch():
           'cursor:pointer;white-space:nowrap;transition:.12s'
         '}'
         '.ifx-abtn:hover{border-color:var(--or,#F57008);color:var(--or,#F57008)}'
-        '.ifx-abtn.on{'
-          'background:var(--or,#F57008);color:#fff;'
-          'border-color:var(--or,#F57008)'
-        '}'
-        '.ifx-acnt{font-size:9px;opacity:.7;margin-left:2px}'
+        '.ifx-abtn.on{background:var(--or,#F57008);color:#fff;border-color:var(--or,#F57008)}'
+        '.ifx-acnt{font-size:9px;opacity:.65;margin-left:2px}'
         '</style>'
     )
 
@@ -1597,7 +1596,7 @@ def _build_nav_patch():
         'conectividad':'Conectividad','tipo_conexion':'Tipo conexión',
         'tipo_cable':'Tipo cable','longitud':'Longitud',
         'categoria_red':'Categoría cable','puertos':'Nº puertos',
-        'velocidad_red':'Velocidad','poe':'PoE','gestionable':'Gestionable',
+        'velocidad_red':'Velocidad red','poe':'PoE','gestionable':'Gestionable',
         'tipo_imp':'Tipo impresora','color_imp':'Color impresión',
         'formato_papel':'Formato papel','wifi_imp':'WiFi','duplex':'Dúplex',
         'potencia_va':'Potencia','capacidad':'Capacidad',
@@ -1619,12 +1618,11 @@ def _build_nav_patch():
 
     js_lines = [
         '<script>(function(){',
-        'var _orig=null,_aidx={},_sel={},_curFam=null,_ready=false;',
-        f'var LBL={LBL};',
-        f'var PRI={PRI};',
+        'var _orig=null,_aidx={},_sel={},_curFam=null;',
+        f'var LBL={LBL};var PRI={PRI};',
         'var SKIP={color:1};',
 
-        # Build attr index keyed ONLY by family
+        # Build index: for each family, collect {attrKey: {value: count}}
         'function _build(){',
         '_orig.forEach(function(p){',
         'var f=p.fam;if(!f||!p.a)return;',
@@ -1636,131 +1634,121 @@ def _build_nav_patch():
         '});});',
         '}',
 
-        # Detect fam: all current ALL products share same fam?
+        # Detect active family: all products in window.ALL share same fam?
         'function _detectFam(){',
-        'var arr=window.ALL||[];',
-        'if(!arr.length)return null;',
-        # check up to 500 products
+        'var arr=window.ALL||[];if(!arr.length)return null;',
         'var f=arr[0]&&arr[0].fam?arr[0].fam:null;',
         'if(!f)return null;',
-        'for(var i=1;i<Math.min(arr.length,500);i++){',
-        'if(!arr[i]||arr[i].fam!==f)return null;}',
+        'var lim=Math.min(arr.length,300);',
+        'for(var i=1;i<lim;i++){if(!arr[i]||arr[i].fam!==f)return null;}',
         'return f;',
         '}',
 
-        # Count products of fam matching attrs
+        # Count _orig products matching fam + attr selection
         'function _count(f,at){',
-        'var keys=Object.keys(at);',
+        'var ks=Object.keys(at);',
         'return _orig.filter(function(p){',
         'if(p.fam!==f)return false;',
-        'if(keys.length&&!p.a)return false;',
-        'for(var i=0;i<keys.length;i++){',
-        'var k=keys[i];if(at[k]&&(!p.a||p.a[k]!==at[k]))return false;}',
-        'return true;}).length;',
+        'if(ks.length&&!p.a)return false;',
+        'for(var i=0;i<ks.length;i++){',
+        'var k=ks[i];if(at[k]&&(!p.a||p.a[k]!==at[k]))return false;',
+        '}return true;}).length;',
         '}',
 
-        # Apply attr selection to window.ALL then call original applyAll
-        'var _origApply=null;',
+        # Apply attr filter to window.ALL and call applyAll
         'function _applyAttrs(){',
-        'var f=_curFam,sel=_sel;',
-        'var hasF=!!f,hasSel=hasF&&Object.keys(sel).length>0;',
-        'if(!hasF){window.ALL=_orig.slice();}',
-        'else if(!hasSel){',
-        # Keep only current fam products (tienda already filtered, we just ensure)
-        'window.ALL=_orig.filter(function(p){return p.fam===f;});',
-        '}else{',
-        'window.ALL=_orig.filter(function(p){',
-        'if(p.fam!==f)return false;',
-        'if(!p.a)return false;',
-        'for(var k in sel){if(sel[k]&&p.a[k]!==sel[k])return false;}',
-        'return true;});',
-        '}',
-        'if(_origApply)_origApply();',
+        'var f=_curFam,sel=_sel,ks=Object.keys(sel);',
+        'if(!f){window.ALL=_orig.slice();}',
+        'else if(!ks.length){window.ALL=_orig.filter(function(p){return p.fam===f;});}',
+        'else{window.ALL=_orig.filter(function(p){',
+        'if(p.fam!==f)return false;if(!p.a)return false;',
+        'for(var i=0;i<ks.length;i++){var k=ks[i];',
+        'if(sel[k]&&p.a[k]!==sel[k])return false;}',
+        'return true;});}',
+        'if(typeof applyAll==="function")applyAll();',
         '}',
 
-        # DOM helpers
+        # DOM helper
         'function _el(t,c){var e=document.createElement(t);if(c)e.className=c;return e;}',
 
-        # Get or create the attrs container — injected into filterPanelIn or before grid
-        'function _getContainer(){',
+        # Get/create container AFTER filterPanel (sibling, not child — avoids mutation loops)
+        'function _getCont(){',
         'var c=document.getElementById("ifx-attrs");',
         'if(c)return c;',
         'c=_el("div");c.id="ifx-attrs";',
-        # Try to find the tienda's filter panel container
-        'var fp=document.getElementById("filterPanelIn")||document.getElementById("filterPanel");',
-        'if(fp){fp.appendChild(c);return c;}',
-        # Fallback: before the grid
+        # Insert after filterPanel
+        'var fp=document.getElementById("filterPanel");',
+        'if(fp&&fp.parentNode){',
+        'fp.parentNode.insertBefore(c,fp.nextSibling);',
+        'return c;}',
+        # Fallback: before grid
         'var grid=document.getElementById("grid");',
         'if(grid&&grid.parentNode)grid.parentNode.insertBefore(c,grid);',
         'return c;',
         '}',
 
-        # Render attribute filters
+        # Render attr filters
         'function _render(fam){',
-        'var c=_getContainer();',
+        'var c=_getCont();',
         'if(!fam||!_aidx[fam]){c.innerHTML="";return;}',
         'var amap=_aidx[fam];',
-        'var keys=Object.keys(amap).filter(function(k){',
-        'return Object.keys(amap[k]).length>=2;',
-        '});',
+        'var keys=Object.keys(amap).filter(function(k){return Object.keys(amap[k]).length>=2;});',
         'keys.sort(function(a,b){return(PRI[a]||99)-(PRI[b]||99);});',
         'if(!keys.length){c.innerHTML="";return;}',
         'var wrap=_el("div");',
         'keys.forEach(function(ak){',
         'var grp=_el("div","ifx-group");',
-        'var lbl=_el("div","ifx-albl");',
-        'lbl.textContent=LBL[ak]||ak;',
-        'grp.appendChild(lbl);',
+        'var lbl=_el("div","ifx-albl");lbl.textContent=LBL[ak]||ak;grp.appendChild(lbl);',
         'var row=_el("div","ifx-arow");',
         # Todos btn
         'var bt=_el("button","ifx-abtn"+((!_sel[ak])?" on":""));',
         'bt.textContent="Todos";',
-        'bt.onclick=(function(k){return function(){',
-        'delete _sel[k];_applyAttrs();};',
-        '})(ak);',
+        'bt.onclick=(function(k){return function(){delete _sel[k];_applyAttrs();};})(ak);',
         'row.appendChild(bt);',
-        # Value buttons
+        # Value btns sorted
         'var vals=Object.keys(amap[ak]).sort(function(a,b){',
         'var na=parseFloat(a),nb=parseFloat(b);',
-        'return(!isNaN(na)&&!isNaN(nb))?na-nb:(a<b?-1:a>b?1:0);',
-        '});',
+        'return(!isNaN(na)&&!isNaN(nb))?na-nb:(a<b?-1:a>b?1:0);});',
         'vals.forEach(function(v){',
         'var cnt=_count(fam,Object.assign({},_sel,(function(o){o[ak]=v;return o;})({})));',
         'if(cnt===0)return;',
         'var btn=_el("button","ifx-abtn"+(_sel[ak]===v?" on":""));',
         'btn.innerHTML=v+"<span class=\'ifx-acnt\'>("+cnt+")</span>";',
-        'btn.onclick=(function(k,vv){return function(){',
-        '_sel[k]=vv;_applyAttrs();',
-        '};})(ak,v);',
-        'row.appendChild(btn);',
-        '});',
-        'grp.appendChild(row);',
-        'wrap.appendChild(grp);',
-        '});',
+        'btn.onclick=(function(k,vv){return function(){_sel[k]=vv;_applyAttrs();};})(ak,v);',
+        'row.appendChild(btn);});',
+        'grp.appendChild(row);wrap.appendChild(grp);});',
         'c.innerHTML="";c.appendChild(wrap);',
         '}',
 
-        # Called after tienda's applyAll runs
-        'function _afterApply(){',
-        'if(!_ready)return;',
+        # Central update function
+        'function _update(){',
         'var fam=_detectFam();',
-        'if(fam!==_curFam){',
-        '_curFam=fam;_sel={};',
-        '}',
+        'if(fam!==_curFam){_curFam=fam;_sel={};}',
         '_render(fam);',
         '}',
 
-        # Wrap the tienda's applyAll
-        'function _hookApplyAll(){',
-        'if(typeof applyAll!=="function")return false;',
-        'if(applyAll.__ifx_hooked)return true;',
-        '_origApply=applyAll;',
-        'applyAll=function(){',
-        '_origApply();',
-        'setTimeout(_afterApply,50);',
-        '};',
-        'applyAll.__ifx_hooked=true;',
-        'return true;',
+        # Watch filterPanelIn for tienda updates (MutationObserver)
+        # filterPanelIn is DIFFERENT from our container → no mutation loop
+        'function _watchFilterPanel(){',
+        'var fp=document.getElementById("filterPanelIn");',
+        'if(!fp){setTimeout(_watchFilterPanel,400);return;}',
+        'new MutationObserver(function(){',
+        'clearTimeout(window.__ifxT);',
+        'window.__ifxT=setTimeout(_update,100);',
+        '}).observe(fp,{childList:true,subtree:true});',
+        '}',
+
+        # Also poll window.ALL length+fam as backup
+        'function _startPoll(){',
+        'var lastLen=0,lastFam=null;',
+        'setInterval(function(){',
+        'var arr=window.ALL||[];',
+        'var fam=_detectFam();',
+        'if(arr.length!==lastLen||fam!==lastFam){',
+        'lastLen=arr.length;lastFam=fam;',
+        'clearTimeout(window.__ifxT);',
+        'window.__ifxT=setTimeout(_update,80);',
+        '}},300);',
         '}',
 
         # Init
@@ -1768,23 +1756,14 @@ def _build_nav_patch():
         'if(!window.ALL||!window.ALL.length){setTimeout(init,300);return;}',
         '_orig=window.ALL.slice();',
         '_build();',
-        '_ready=true;',
-        # Hook applyAll
-        'var hooked=_hookApplyAll();',
-        'if(!hooked){',
-        # If applyAll not available yet, retry
-        'var tries=0;',
-        'var iv=setInterval(function(){',
-        'if(_hookApplyAll()||++tries>20)clearInterval(iv);',
-        '},200);',
-        '}',
-        # Initial render
-        'setTimeout(_afterApply,500);',
+        '_watchFilterPanel();',
+        '_startPoll();',
+        'setTimeout(_update,500);',
         '}',
 
         'if(document.readyState==="loading")',
         'document.addEventListener("DOMContentLoaded",init);',
-        'else{init();setTimeout(init,600);}',
+        'else{init();setTimeout(init,700);}',
         '})();</script>',
     ]
 
