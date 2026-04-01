@@ -1558,7 +1558,7 @@ def ascii_encode(html_str):
     return ''.join(out)
 
 # ── Navegación jerárquica por familias ────────────────────────
-def _build_nav_patch():
+def _build_nav_patch(products):
     """Filtros de atributos. Precomputa el índice en Python y lo embebe en JS.
     Detecta categoría activa via p.cat en window.ALL (100% fiable).
     Inserta filtros en filterPanelIn cuando la tienda cambia de categoría.
@@ -2092,7 +2092,7 @@ def update_html(products):
         # En Strategy A la tienda está embebida directamente en el HTML
         # (no en _TG), así que el iframe #f-tienda carga el mismo documento.
         # Buscamos </body> del documento principal o añadimos al final.
-        nav_patch = _build_nav_patch()
+        nav_patch = _build_nav_patch(products)
 
         # Stock patch para Strategy A
         to_stock_a = {}
@@ -2130,7 +2130,7 @@ def update_html(products):
         tg_fixed = fix_tienda_html(tg_new)
 
         # ── Inyectar navegación por familias ─────────────────────
-        nav_patch = _build_nav_patch()
+        nav_patch = _build_nav_patch(products)
         if '</body>' in tg_fixed:
             tg_fixed = tg_fixed.replace('</body>', nav_patch + '</body>', 1)
         else:
