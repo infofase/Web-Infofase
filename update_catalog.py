@@ -832,6 +832,8 @@ def process_binary_csv(text):
         a = extract_attrs(nombre, cat_raw)
         if a: p["a"] = a
 
+        products.append(p)  # ← CRÍTICO: añadir el producto a la lista
+
     log(f"  Binary: {len(products)} productos cargados | {skipped} descartados (cat. no IT) | {no_price} sin precio")
     return products
 
@@ -1602,7 +1604,7 @@ def update_html(products):
                    separators=(",",":")).encode("utf-8")
     ).decode("ascii")
 
-    # Strategy A: standalone tienda
+    # Strategy A: standalone tienda (var ALL directamente en el HTML)
     pat_direct = r'(var ALL = JSON\.parse\((?:new TextDecoder\(\)\.decode\(Uint8Array\.from\(atob\(|atob\()")[A-Za-z0-9+/=]+'
     html2, n = re.subn(
         pat_direct,
@@ -1611,9 +1613,31 @@ def update_html(products):
 
     if n > 0:
         log("  Modo: standalone tienda")
-        # FIX CRITICO: _ZA puede coexistir con var ALL en la misma pagina.
-        # Bug anterior: za_updated=0 y NO se llamaba a update_zona_apple,
-        # por lo que Zona Apple NUNCA se actualizaba en este modo.
+
+        # ── Inyectar nav y stock patch en el HTML principal ────────
+        # En Strategy A la tienda está embebida directamente en el HTML
+        # (no en _TG), así que el iframe #f-tienda carga el mismo documento.
+        # Buscamos </body> del documento principal o añadimos al final.
+        nav_patch = _build_nav_patch()
+
+        # Stock patch para Strategy A
+        to_stock_a = {}
+        for p in products:
+            pid2 = p.get('id','').strip().lower()
+            st   = p.get('st','')
+            if st == 'stock' and p.get('qty', 0) > 0:
+                to_stock_a[pid2] = {'st': 'stock',    'qty': p['qty']}
+            elif st == 'transito' and p.get('tv', 0) > 0:
+                to_stock_a[pid2] = {'st': 'transito', 'net': p['tv']}
+        to_patch_a = _build_stock_patch(to_stock_a, 'TO')
+
+        combined = nav_patch + to_patch_a
+        if '</body>' in html2:
+            html2 = html2.replace('</body>', combined + '</body>', 1)
+        else:
+            html2 += combined
+        log(f"  Tienda A: nav + stock patch inyectados ({len(to_stock_a)} prods)")
+
         html2, za_updated = update_zona_apple(html2, _csv_rows)
     else:
         # Strategy B: integrated site — products inside _TG
