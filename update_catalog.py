@@ -1559,24 +1559,51 @@ def ascii_encode(html_str):
 
 # ── Navegación jerárquica por familias ────────────────────────
 def _build_nav_patch(products):
+    """Filtros de atributos — version maxima simplicidad.
+    AIDX precomputado en Python. Sin conteos dinamicos. Solo mostrar y filtrar."""
     import json as _j
 
-    # Build AIDX at Python time
-    aidx = {}
+    # Precomputar indice {cat: {attr: [val1,val2,...]}} ordenado
+    aidx_raw = {}
     for p in products:
         c = p.get("cat")
         if not c or not p.get("a"): continue
-        if c not in aidx: aidx[c] = {}
+        if c not in aidx_raw: aidx_raw[c] = {}
         for k, v in p["a"].items():
             if not v or k == "color": continue
-            if k not in aidx[c]: aidx[c][k] = {}
-            aidx[c][k][v] = aidx[c][k].get(v, 0) + 1
-    aidx_clean = {cat: {k: v for k, v in attrs.items() if len(v) >= 2}
-                  for cat, attrs in aidx.items()}
-    aidx_clean = {cat: a for cat, a in aidx_clean.items() if a}
-    AIDX_JSON = _j.dumps(aidx_clean, ensure_ascii=True, separators=(",",":"))
+            if k not in aidx_raw[c]: aidx_raw[c][k] = set()
+            aidx_raw[c][k].add(str(v))
 
-    LBL = _j.dumps({
+    # Convertir a listas, solo attrs con >=2 valores
+    aidx = {}
+    PRI_PY = ["pantalla","procesador","ram","almacenamiento","tipo_disco",
+              "sistema_op","grafica","resolucion","panel","refresco",
+              "conectividad","tipo_conexion","tipo_cable","longitud",
+              "categoria_red","puertos","velocidad_red","poe","gestionable",
+              "tipo_imp","color_imp","formato_papel","wifi_imp","duplex",
+              "potencia_va","capacidad","usb_ver","tipo_ram","capacidad_ram",
+              "velocidad_ram","formato_ram"]
+    for cat, attrs in aidx_raw.items():
+        cat_attrs = {}
+        for k in PRI_PY:  # orden de prioridad
+            if k in attrs and len(attrs[k]) >= 2:
+                def _sort_val(x):
+                    try:
+                        digits = ''.join(c for c in x if c.isdigit() or c == '.')
+                        return (0, float(digits)) if x and x[0].isdigit() and digits else (1, x)
+                    except: return (1, x)
+                vals = sorted(attrs[k], key=_sort_val)
+                cat_attrs[k] = vals
+        # Añadir attrs restantes no en PRI_PY
+        for k, v in attrs.items():
+            if k not in cat_attrs and len(v) >= 2:
+                cat_attrs[k] = sorted(v)
+        if cat_attrs:
+            aidx[cat] = cat_attrs
+
+    AIDX_JSON = _j.dumps(aidx, ensure_ascii=True, separators=(",",":"))
+
+    LBL_PY = {
         "pantalla":"Tama\u00f1o pantalla","procesador":"Procesador",
         "ram":"Memoria RAM","almacenamiento":"Almacenamiento",
         "tipo_disco":"Tipo de disco","sistema_op":"Sistema operativo",
@@ -1584,26 +1611,16 @@ def _build_nav_patch(products):
         "panel":"Tipo de panel","refresco":"Refresco",
         "conectividad":"Conectividad","tipo_conexion":"Tipo conexi\u00f3n",
         "tipo_cable":"Tipo cable","longitud":"Longitud",
-        "categoria_red":"Categor\u00eda cable","puertos":"N\u00ba puertos",
-        "velocidad_red":"Velocidad red","poe":"PoE","gestionable":"Gestionable",
+        "categoria_red":"Categ. cable","puertos":"N\u00ba puertos",
+        "velocidad_red":"Velocidad","poe":"PoE","gestionable":"Gestionable",
         "tipo_imp":"Tipo impresora","color_imp":"Color impresi\u00f3n",
         "formato_papel":"Formato papel","wifi_imp":"WiFi","duplex":"D\u00faplex",
         "potencia_va":"Potencia","capacidad":"Capacidad",
         "usb_ver":"USB","tipo_ram":"Tipo RAM",
         "capacidad_ram":"Capacidad RAM","velocidad_ram":"Velocidad RAM",
         "formato_ram":"Formato RAM",
-    }, ensure_ascii=True, separators=(",",":"))
-
-    PRI = _j.dumps({
-        "pantalla":0,"procesador":1,"ram":2,"almacenamiento":3,
-        "tipo_disco":4,"sistema_op":5,"grafica":6,"resolucion":7,
-        "panel":8,"refresco":9,"conectividad":10,"tipo_conexion":11,
-        "tipo_cable":12,"longitud":13,"categoria_red":14,"puertos":15,
-        "velocidad_red":16,"poe":17,"gestionable":18,"tipo_imp":19,
-        "color_imp":20,"formato_papel":21,"wifi_imp":22,"duplex":23,
-        "potencia_va":24,"capacidad":25,"usb_ver":26,"tipo_ram":27,
-        "capacidad_ram":28,"velocidad_ram":29,"formato_ram":30,
-    }, separators=(",",":"))
+    }
+    LBL_JSON = _j.dumps(LBL_PY, ensure_ascii=True, separators=(",",":"))
 
     css = (
         "<style>"
@@ -1621,31 +1638,32 @@ def _build_nav_patch(products):
         ".ifx-btn:hover{border-color:var(--or,#F57008);color:var(--or,#F57008)}"
         ".ifx-btn.on{background:var(--or,#F57008);color:#fff;"
         "border-color:var(--or,#F57008)}"
-        ".ifx-cnt{font-size:9px;opacity:.65;margin-left:2px}"
         "</style>"
     )
 
-    # JS as a multiline string to avoid quote conflicts
-    js_template = r"""<script>(function(){
+    # AIDX values stored as arrays (pre-sorted in Python, no special chars issues)
+    # Filter function uses p.a[k] directly
+    js_tpl = r"""<script>
+(function(){
 var AIDX=__AIDX__;
 var LBL=__LBL__;
-var PRI=__PRI__;
 var _catALL=null,_curCat=null,_sel={};
 
-function _cat(arr){
-  if(!arr||!arr.length)return null;
-  var c=arr[0]&&arr[0].cat?arr[0].cat:null;
-  if(!c)return null;
-  for(var i=1;i<Math.min(arr.length,300);i++){if(!arr[i]||arr[i].cat!==c)return null;}
+// Get active cat: all window.ALL products share same cat?
+function _getCat(){
+  var a=window.ALL||[];if(!a.length)return null;
+  var c=a[0]?a[0].cat:null;if(!c)return null;
+  for(var i=1;i<Math.min(a.length,300);i++){if(!a[i]||a[i].cat!==c)return null;}
   return c;
 }
 
+// Apply attr filter on _catALL, call applyAll
 function _apply(){
   if(!_catALL)return;
-  var sel=_sel,ks=Object.keys(sel);
+  var s=_sel,ks=Object.keys(s);
   window.ALL=ks.length?_catALL.filter(function(p){
     if(!p.a)return false;
-    for(var i=0;i<ks.length;i++){var k=ks[i];if(sel[k]&&p.a[k]!==sel[k])return false;}
+    for(var i=0;i<ks.length;i++){if(s[ks[i]]&&p.a[ks[i]]!==s[ks[i]])return false;}
     return true;
   }):_catALL.slice();
   if(typeof applyAll==='function')applyAll();
@@ -1654,105 +1672,76 @@ function _apply(){
 function _el(t,c){var e=document.createElement(t);if(c)e.className=c;return e;}
 
 function _cont(){
-  var c=document.getElementById('ifx-attrs');
-  if(c)return c;
+  var c=document.getElementById('ifx-attrs');if(c)return c;
   c=_el('div');c.id='ifx-attrs';
   var fp=document.getElementById('filterPanelIn');
-  if(fp){fp.appendChild(c);return c;}
-  var g=document.getElementById('grid');
-  if(g&&g.parentNode)g.parentNode.insertBefore(c,g);
+  if(fp){fp.appendChild(c);}
+  else{var g=document.getElementById('grid');
+    if(g&&g.parentNode)g.parentNode.insertBefore(c,g);}
   return c;
 }
 
-function _render(cat,catArr){
+// Render: show AIDX values directly (no dynamic counting)
+function _render(cat){
   var c=_cont();
-  if(!cat||!AIDX[cat]||!catArr||!catArr.length){c.innerHTML='';return;}
-  var AC={};
-  catArr.forEach(function(p){
-    if(!p.a)return;
-    var ks=Object.keys(p.a);
-    for(var i=0;i<ks.length;i++){
-      var k=ks[i],v=p.a[k];
-      if(!v||k==='color')continue;
-      if(!AC[k])AC[k]={};
-      AC[k][v]=(AC[k][v]||0)+1;
-    }
-  });
+  if(!cat||!AIDX[cat]){c.innerHTML='';return;}
   var ref=AIDX[cat];
-  var keys=Object.keys(ref).filter(function(k){
-    return AC[k]&&Object.keys(AC[k]).length>=2;
-  }).sort(function(a,b){return(PRI[a]||99)-(PRI[b]||99);});
-  if(!keys.length){c.innerHTML='';return;}
-  var wrap=_el('div');
-  keys.forEach(function(ak){
-    var grp=_el('div','ifx-grp');
-    var lbl=_el('div','ifx-lbl');lbl.textContent=LBL[ak]||ak;grp.appendChild(lbl);
-    var row=_el('div','ifx-row');
-    var bt=_el('button','ifx-btn'+((!_sel[ak])?' on':''));
-    bt.textContent='Todos';
-    bt.onclick=(function(k){return function(){delete _sel[k];_apply();_render(_curCat,_catALL);};})(ak);
-    row.appendChild(bt);
-    var vals=Object.keys(AC[ak]).sort(function(a,b){
-      var na=parseFloat(a),nb=parseFloat(b);
-      return(!isNaN(na)&&!isNaN(nb))?na-nb:(a<b?-1:a>b?1:0);
-    });
+  var ks=Object.keys(ref);
+  if(!ks.length){c.innerHTML='';return;}
+  var w=_el('div');
+  ks.forEach(function(ak){
+    var vals=ref[ak];if(!vals||!vals.length)return;
+    var g=_el('div','ifx-grp');
+    var l=_el('div','ifx-lbl');l.textContent=LBL[ak]||ak;g.appendChild(l);
+    var r=_el('div','ifx-row');
+    // Todos btn
+    var b=_el('button','ifx-btn'+((!_sel[ak])?' on':''));
+    b.textContent='Todos';
+    b.onclick=(function(k){return function(){delete _sel[k];_apply();_render(_curCat);};})(ak);
+    r.appendChild(b);
+    // Value btns
     vals.forEach(function(v){
-      var cnt=catArr.filter(function(p){
-        if(!p.a||p.a[ak]!==v)return false;
-        for(var k in _sel){if(k!==ak&&_sel[k]&&p.a[k]!==_sel[k])return false;}
-        return true;
-      }).length;
-      if(!cnt)return;
       var btn=_el('button','ifx-btn'+(_sel[ak]===v?' on':''));
-      btn.innerHTML=v+'<span class="ifx-cnt">('+cnt+')</span>';
-      btn.onclick=(function(k,vv){return function(){_sel[k]=vv;_apply();_render(_curCat,_catALL);};})(ak,v);
-      row.appendChild(btn);
+      btn.textContent=v;
+      btn.onclick=(function(k,vv){return function(){_sel[k]=vv;_apply();_render(_curCat);};})(ak,v);
+      r.appendChild(btn);
     });
-    grp.appendChild(row);wrap.appendChild(grp);
+    g.appendChild(r);w.appendChild(g);
   });
-  c.innerHTML='';c.appendChild(wrap);
+  c.innerHTML='';c.appendChild(w);
 }
 
-function _update(){
-  var arr=window.ALL||[];
-  var cat=_cat(arr);
-  if(cat!==_curCat){_curCat=cat;_sel={};_catALL=cat?arr.slice():null;}
-  _render(cat,_catALL);
-}
-
-function _poll(){
-  var lastCat=null,lastLen=-1;
-  setInterval(function(){
-    var arr=window.ALL||[];
-    var cat=_cat(arr);
-    var len=arr.length;
-    if(cat!==lastCat||(cat&&!Object.keys(_sel).length&&Math.abs(len-lastLen)>5)){
-      lastCat=cat;lastLen=len;
-      clearTimeout(window.__ifxT);
-      window.__ifxT=setTimeout(_update,80);
-    }
-  },400);
+// Update: detect cat change, save catALL, render
+function _upd(){
+  var a=window.ALL||[];
+  var cat=_getCat();
+  if(cat!==_curCat){
+    _curCat=cat;_sel={};
+    _catALL=cat?a.slice():null;
+  }
+  _render(cat);
 }
 
 function init(){
   if(!window.ALL||!window.ALL.length){setTimeout(init,300);return;}
-  _poll();
+  // Poll every 400ms
+  var lc=null,ll=0;
+  setInterval(function(){
+    var a=window.ALL||[],cat=_getCat(),l=a.length;
+    if(cat!==lc||l!==ll){lc=cat;ll=l;clearTimeout(window.__it);window.__it=setTimeout(_upd,80);}
+  },400);
+  // Nav clicks
   var nav=document.getElementById('catNavIn');
-  if(nav)nav.addEventListener('click',function(){
-    setTimeout(function(){
-      var arr=window.ALL||[];var cat=_cat(arr);
-      if(cat!==_curCat){_curCat=cat;_sel={};_catALL=cat?arr.slice():null;}
-      _render(cat,_catALL);
-    },300);
-  },true);
-  setTimeout(_update,500);
+  if(nav)nav.addEventListener('click',function(){setTimeout(_upd,300);},true);
+  setTimeout(_upd,600);
 }
 
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
-else{init();setTimeout(init,800);}
-})();</script>"""
+else{init();setTimeout(init,900);}
+})();
+</script>"""
 
-    js = js_template.replace('__AIDX__', AIDX_JSON).replace('__LBL__', LBL).replace('__PRI__', PRI)
+    js = js_tpl.replace('__AIDX__', AIDX_JSON).replace('__LBL__', LBL_JSON)
     return css + js
 
 
