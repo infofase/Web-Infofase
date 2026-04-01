@@ -1559,19 +1559,21 @@ def ascii_encode(html_str):
 
 # ── Navegación jerárquica por familias ────────────────────────
 def _build_nav_patch(products):
-    """Filtros de atributos — version definitiva.
-    - AIDX construido en JavaScript desde window.ALL (sin JSON encoding, sin comillas problematicas)
-    - Object.defineProperty para interceptar cambios en window.ALL (100% fiable)
-    - Se inserta ANTES de filterPanel (no dentro, no afectado por DOM de la tienda)
+    """Filtros de atributos — version final definitiva.
+    Estrategia robusta:
+    - Indice construido en JS desde window.ALL (sin JSON encoding)
+    - Object.defineProperty en window.ALL para detectar cambios de categoria
+    - MutationObserver en filterPanelIn para reinyectar tras reconstruccion de la tienda
+    - Inserta al final de filterPanelIn (junto a los filtros existentes)
     """
 
     css = (
         "<style>"
-        "#ifx-attrs{margin-bottom:8px}"
+        "#ifx-attrs{display:block}"
         ".ifx-grp{margin-bottom:2px}"
         ".ifx-lbl{font-size:9px;font-weight:700;color:var(--ink4,#9b9b9b);"
-        "text-transform:uppercase;letter-spacing:.07em;display:block;"
-        "margin:10px 0 4px;padding-top:8px;"
+        "text-transform:uppercase;letter-spacing:.07em;display:flex;"
+        "align-items:center;gap:4px;margin:10px 0 4px;padding-top:8px;"
         "border-top:1px solid var(--bdr,rgba(0,0,0,.08))}"
         ".ifx-row{display:flex;flex-wrap:wrap;gap:4px}"
         ".ifx-btn{font-size:11px;font-weight:500;padding:3px 10px;"
@@ -1579,18 +1581,8 @@ def _build_nav_patch(products):
         "background:var(--bg,#fff);color:var(--ink2,#555);"
         "cursor:pointer;white-space:nowrap;transition:.12s}"
         ".ifx-btn:hover{border-color:var(--or,#F57008);color:var(--or,#F57008)}"
-        ".ifx-btn.on{background:var(--or,#F57008);color:#fff;"
-        "border-color:var(--or,#F57008)}"
+        ".ifx-btn.on{background:var(--or,#F57008);color:#fff;border-color:var(--or,#F57008)}"
         "</style>"
-    )
-
-    # Priority order for attrs (no special chars - all ASCII)
-    PRI_LIST = (
-        "pantalla,procesador,ram,almacenamiento,tipo_disco,sistema_op,"
-        "grafica,resolucion,panel,refresco,conectividad,tipo_conexion,"
-        "tipo_cable,longitud,categoria_red,puertos,velocidad_red,poe,"
-        "tipo_imp,color_imp,formato_papel,wifi_imp,potencia_va,capacidad,"
-        "tipo_ram,capacidad_ram,velocidad_ram,formato_ram"
     )
 
     LBL_DICT = (
@@ -1600,12 +1592,12 @@ def _build_nav_patch(products):
         "almacenamiento:'Almacenamiento',"
         "tipo_disco:'Tipo de disco',"
         "sistema_op:'Sistema operativo',"
-        "grafica:'Gr\u00e1fica dedicada',"
+        "grafica:'Gr\u00e1fica',"
         "resolucion:'Resoluci\u00f3n',"
-        "panel:'Tipo de panel',"
+        "panel:'Panel',"
         "refresco:'Refresco',"
         "conectividad:'Conectividad',"
-        "tipo_conexion:'Tipo conexi\u00f3n',"
+        "tipo_conexion:'Conexi\u00f3n',"
         "tipo_cable:'Tipo cable',"
         "longitud:'Longitud',"
         "categoria_red:'Categor\u00eda',"
@@ -1614,98 +1606,85 @@ def _build_nav_patch(products):
         "poe:'PoE',"
         "tipo_imp:'Tipo impresora',"
         "color_imp:'Color',"
-        "formato_papel:'Formato papel',"
+        "formato_papel:'Papel',"
         "wifi_imp:'WiFi',"
         "potencia_va:'Potencia',"
         "capacidad:'Capacidad',"
         "tipo_ram:'Tipo RAM',"
-        "capacidad_ram:'Capacidad RAM',"
-        "velocidad_ram:'Velocidad RAM',"
-        "formato_ram:'Formato RAM'"
+        "capacidad_ram:'Cap. RAM'"
+    )
+
+    PRI_LIST = (
+        "pantalla,procesador,ram,almacenamiento,tipo_disco,sistema_op,"
+        "grafica,resolucion,panel,refresco,conectividad,tipo_conexion,"
+        "tipo_cable,longitud,categoria_red,puertos,velocidad_red,poe,"
+        "tipo_imp,color_imp,formato_papel,wifi_imp,potencia_va,capacidad,"
+        "tipo_ram,capacidad_ram"
     )
 
     js = """<script>
 (function(){
   var LBL={""" + LBL_DICT + """};
   var PRI='""" + PRI_LIST + """'.split(',');
-  var _aidx=null,_catALL=null,_curCat=null,_sel={},_applying=false;
+  var _idx=null,_catALL=null,_curCat=null,_sel={},_busy=false;
 
-  // Build attr index from product array - pure JS, no JSON encoding issues
+  // Construir indice desde productos JS (sin JSON, sin encoding issues)
   function buildIdx(prods){
-    var idx={};
+    var raw={};
     for(var i=0;i<prods.length;i++){
-      var p=prods[i];
-      var c=p.cat;if(!c||!p.a)continue;
-      if(!idx[c])idx[c]={};
+      var p=prods[i],c=p.cat;
+      if(!c||!p.a)continue;
+      if(!raw[c])raw[c]={};
       var ks=Object.keys(p.a);
       for(var j=0;j<ks.length;j++){
         var k=ks[j],v=p.a[k];
         if(!v||k==='color')continue;
-        if(!idx[c][k])idx[c][k]={};
-        idx[c][k][v]=true;
+        if(!raw[c][k])raw[c][k]={};
+        raw[c][k][v]=true;
       }
     }
-    // Convert to sorted arrays, keep only attrs with >=2 values
-    var result={};
-    Object.keys(idx).forEach(function(c){
-      var cr={};
+    var out={};
+    Object.keys(raw).forEach(function(c){
+      var co={};
       PRI.forEach(function(k){
-        if(!idx[c][k])return;
-        var vals=Object.keys(idx[c][k]);
+        if(!raw[c][k])return;
+        var vals=Object.keys(raw[c][k]);
         if(vals.length<2)return;
-        cr[k]=vals.sort(function(a,b){
+        co[k]=vals.sort(function(a,b){
           var na=parseFloat(a),nb=parseFloat(b);
           return(!isNaN(na)&&!isNaN(nb))?na-nb:(a<b?-1:a>b?1:0);
         });
       });
-      if(Object.keys(cr).length)result[c]=cr;
+      if(Object.keys(co).length)out[c]=co;
     });
-    return result;
+    return out;
   }
 
-  // Get active cat: all products in arr share same .cat?
-  function getCat(arr){
-    if(!arr||!arr.length)return null;
-    var c=arr[0]&&arr[0].cat?arr[0].cat:null;
-    if(!c)return null;
-    for(var i=1;i<Math.min(arr.length,300);i++){
-      if(!arr[i]||arr[i].cat!==c)return null;
-    }
+  // Detectar categoria activa
+  function getCat(){
+    var a=window.ALL||[];if(!a.length)return null;
+    var c=a[0]&&a[0].cat?a[0].cat:null;if(!c)return null;
+    for(var i=1;i<Math.min(a.length,300);i++){if(!a[i]||a[i].cat!==c)return null;}
     return c;
   }
 
   function el(t,c){var e=document.createElement(t);if(c)e.className=c;return e;}
 
-  // Get/create our container - inserted BEFORE filterPanel (safe from tienda DOM changes)
-  function getCont(){
-    var c=document.getElementById('ifx-attrs');if(c)return c;
-    c=el('div');c.id='ifx-attrs';
-    var fp=document.getElementById('filterPanel');
-    if(fp&&fp.parentNode){fp.parentNode.insertBefore(c,fp);}
-    else{var g=document.getElementById('grid');
-      if(g&&g.parentNode)g.parentNode.insertBefore(c,g);}
-    return c;
-  }
-
-  // Render filter groups for given cat
-  function render(cat){
-    var c=getCont();
-    if(!cat||!_aidx||!_aidx[cat]){c.innerHTML='';return;}
-    var ref=_aidx[cat];
-    var keys=Object.keys(ref);
-    if(!keys.length){c.innerHTML='';return;}
+  // Renderizar HTML de los filtros y ponerlo en el contenedor
+  function renderInto(cont,cat){
+    if(!cat||!_idx||!_idx[cat]){cont.innerHTML='';return;}
+    var ref=_idx[cat],keys=Object.keys(ref);
+    if(!keys.length){cont.innerHTML='';return;}
     var w=el('div');
     keys.forEach(function(ak){
       var vals=ref[ak];if(!vals||!vals.length)return;
       var g=el('div','ifx-grp');
       var lbl=el('div','ifx-lbl');lbl.textContent=LBL[ak]||ak;g.appendChild(lbl);
       var row=el('div','ifx-row');
-      // Todos btn
-      var bt=el('button','ifx-btn'+((!_sel[ak])?' on':''));
+      var bt=el('button','ifx-btn'+(!_sel[ak]?' on':''));
       bt.textContent='Todos';
       bt.onclick=(function(k){return function(){delete _sel[k];applyFilter();};})(ak);
       row.appendChild(bt);
-      // Value btns
       vals.forEach(function(v){
         var btn=el('button','ifx-btn'+(_sel[ak]===v?' on':''));
         btn.textContent=v;
@@ -1714,62 +1693,74 @@ def _build_nav_patch(products):
       });
       g.appendChild(row);w.appendChild(g);
     });
-    c.innerHTML='';c.appendChild(w);
+    cont.innerHTML='';cont.appendChild(w);
   }
 
-  // Apply attr selection to catALL, call applyAll
+  // Aplicar filtros de attrs: filtrar _catALL y llamar applyAll
   function applyFilter(){
     if(!_catALL)return;
     var sel=_sel,ks=Object.keys(sel);
-    _applying=true;
+    _busy=true;
     window.ALL=ks.length?_catALL.filter(function(p){
       if(!p.a)return false;
       for(var i=0;i<ks.length;i++){if(sel[ks[i]]&&p.a[ks[i]]!==sel[ks[i]])return false;}
       return true;
     }):_catALL.slice();
     if(typeof applyAll==='function')applyAll();
-    _applying=false;
-    render(_curCat);
+    _busy=false;
+    injectFilters();
   }
 
-  // Called when tienda updates window.ALL
-  function onAllChange(arr){
-    var cat=getCat(arr);
-    if(cat!==_curCat){_curCat=cat;_sel={};}
-    _catALL=arr.slice();
-    render(cat);
+  // Inyectar nuestros filtros en filterPanelIn
+  // Reutiliza #ifx-attrs si ya existe, o crea uno nuevo
+  function injectFilters(){
+    var fpi=document.getElementById('filterPanelIn');
+    if(!fpi)return;
+    var cat=getCat();
+    if(cat!==_curCat){_curCat=cat;_sel={};_catALL=(window.ALL||[]).slice();}
+    var cont=document.getElementById('ifx-attrs');
+    if(!cont){cont=el('div');cont.id='ifx-attrs';fpi.appendChild(cont);}
+    else if(cont.parentNode!==fpi){fpi.appendChild(cont);}
+    renderInto(cont,cat);
+  }
+
+  // Observar filterPanelIn para reinyectar cuando la tienda lo reconstruya
+  function watchFilterPanel(){
+    var fpi=document.getElementById('filterPanelIn');
+    if(!fpi){setTimeout(watchFilterPanel,300);return;}
+    var obs=new MutationObserver(function(){
+      if(_busy)return;
+      clearTimeout(window.__ifxM);
+      window.__ifxM=setTimeout(injectFilters,120);
+    });
+    obs.observe(fpi,{childList:true});
   }
 
   function init(){
     if(!window.ALL||!window.ALL.length){setTimeout(init,300);return;}
-    // Build index from full product list
-    _aidx=buildIdx(window.ALL);
-    // Intercept window.ALL via defineProperty
+    // Construir indice
+    _idx=buildIdx(window.ALL);
+    // Interceptar window.ALL
     var _arr=window.ALL;
     try{
       Object.defineProperty(window,'ALL',{
         get:function(){return _arr;},
         set:function(v){
           _arr=v||[];
-          if(!_applying){
+          if(!_busy){
             clearTimeout(window.__ifxT);
-            window.__ifxT=setTimeout(function(){onAllChange(_arr);},100);
+            window.__ifxT=setTimeout(injectFilters,150);
           }
-        },
-        configurable:true
+        },configurable:true
       });
     }catch(e){
-      // Fallback: polling
-      var lc=null,ll=0;
-      setInterval(function(){
-        var a=window.ALL||[],cat=getCat(a),l=a.length;
-        if(cat!==lc||l!==ll){lc=cat;ll=l;
-          clearTimeout(window.__ifxT);
-          window.__ifxT=setTimeout(function(){onAllChange(a);},100);}
-      },500);
+      // Fallback polling
+      setInterval(function(){if(!_busy)injectFilters();},600);
     }
-    // Initial render
-    setTimeout(function(){onAllChange(window.ALL||[]);},600);
+    // Observar filterPanelIn
+    watchFilterPanel();
+    // Primera inyeccion
+    setTimeout(injectFilters,700);
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
