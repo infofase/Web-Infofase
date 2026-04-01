@@ -974,6 +974,7 @@ def process_binary_csv(text):
         if fam_sub:
             p["fam"] = fam_sub[0]
             p["sub"] = fam_sub[1]
+            p["s"]   = fam_sub[1]   # p.s es lo que la tienda usa para subfamilias
 
         if canon_v > 0:  p["c"]   = canon_v
         if st == "stock" and qty > 0:
