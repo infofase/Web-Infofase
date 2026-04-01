@@ -1559,258 +1559,168 @@ def ascii_encode(html_str):
 
 # ── Navegación jerárquica por familias ────────────────────────
 def _build_nav_patch():
-    """Genera CSS + JS que construye la navegación Familia → Subfamilia → Tipo
-    a partir de los campos fam/sub/sub2 de los productos Binary inyectados
-    en window.ALL. Modifica window.ALL y llama a applyAll() para filtrar.
+    """Inyecta filtros de atributos bajo la navegación de la tienda.
+    Indexa attrs por FAMILIA para mostrarlos siempre que se seleccione una categoría.
     """
+    import json as _j
     css = (
         '<style>'
-        '#ifx-nav{width:100%;margin-bottom:4px}'
-        '.ifx-row{display:flex;flex-wrap:wrap;gap:5px;padding:5px 0}'
-        '.ifx-lbl{font-size:9.5px;font-weight:700;color:var(--ink4,#aaa);'
-          'text-transform:uppercase;letter-spacing:.07em;'
-          'display:block;width:100%;margin-top:4px}'
-        '.ifx-sep{height:1px;background:var(--bdr,rgba(0,0,0,.08));margin:6px 0}'
-        '.ifx-btn{'
-          'font-size:11.5px;font-weight:600;padding:4px 12px;'
-          'border-radius:20px;border:1.5px solid var(--bdr2,#ccc);'
-          'background:var(--bg,#fff);color:var(--ink2,#555);'
-          'cursor:pointer;white-space:nowrap;transition:.13s all'
-        '}'
-        '.ifx-btn:hover{border-color:var(--or,#F57008);color:var(--or,#F57008)}'
-        '.ifx-btn.on{'
-          'background:var(--or,#F57008);color:#fff;'
-          'border-color:var(--or,#F57008)'
-        '}'
-        '.ifx-count{'
-          'font-size:9px;opacity:.7;margin-left:3px;font-weight:400'
-        '}'
+        '#ifx-attrs{margin:6px 0 2px}'
+        '.ifx-arow{display:flex;flex-wrap:wrap;gap:5px;margin:3px 0 5px}'
+        '.ifx-albl{font-size:9px;font-weight:700;color:var(--ink4,#aaa);'
+        'text-transform:uppercase;letter-spacing:.07em;'
+        'display:block;width:100%;margin-top:6px;margin-bottom:1px}'
+        '.ifx-asep{height:1px;background:var(--bdr,rgba(0,0,0,.07));margin:4px 0}'
+        '.ifx-abtn{font-size:11px;font-weight:600;padding:3px 10px;'
+        'border-radius:20px;border:1.5px solid var(--bdr2,#ccc);'
+        'background:var(--bg,#fff);color:var(--ink2,#555);'
+        'cursor:pointer;white-space:nowrap;line-height:1.4}'
+        '.ifx-abtn:hover{border-color:var(--or,#F57008);color:var(--or,#F57008)}'
+        '.ifx-abtn.on{background:var(--or,#F57008);color:#fff;border-color:var(--or,#F57008)}'
+        '.ifx-acnt{font-size:9px;opacity:.7;margin-left:2px}'
         '</style>'
     )
 
-    js = (
-        '<script>'
-        '(function(){'
-          'var _orig=null,_idx={},_aidx={},_st={fam:null,sub:null,sub2:null,attrs:{}};'
+    LBL = json.dumps({
+        'pantalla':'Tamaño pantalla','procesador':'Procesador',
+        'ram':'Memoria RAM','almacenamiento':'Almacenamiento',
+        'tipo_disco':'Tipo de disco','sistema_op':'Sistema operativo',
+        'grafica':'Gráfica dedicada','resolucion':'Resolución',
+        'panel':'Tipo de panel','refresco':'Refresco',
+        'conectividad':'Conectividad','tipo_conexion':'Tipo conexión',
+        'tipo_cable':'Tipo cable','longitud':'Longitud',
+        'categoria_red':'Categoría','puertos':'Puertos',
+        'velocidad_red':'Velocidad','poe':'PoE','gestionable':'Gestionable',
+        'tipo_imp':'Tipo impresora','color_imp':'Color impresión',
+        'formato_papel':'Formato papel','wifi_imp':'WiFi','duplex':'Dúplex',
+        'potencia_va':'Potencia (VA)','capacidad':'Capacidad',
+        'usb_ver':'USB','tipo_ram':'Tipo RAM',
+        'capacidad_ram':'Capacidad RAM','velocidad_ram':'Velocidad RAM',
+        'formato_ram':'Formato RAM',
+    }, ensure_ascii=False, separators=(',',':'))
 
-          # Esperar a que ALL esté disponible
-          'function init(){'
-            'if(!window.ALL||!window.ALL.length){setTimeout(init,500);return;}'
-            '_orig=window.ALL.slice();'
-            '_build();_renderNav();'
-          '}'
+    PRI = json.dumps({
+        'pantalla':0,'procesador':1,'ram':2,'almacenamiento':3,
+        'tipo_disco':4,'sistema_op':5,'grafica':6,'resolucion':7,
+        'panel':8,'refresco':9,'conectividad':10,'tipo_conexion':11,
+        'tipo_cable':12,'longitud':13,'categoria_red':14,'puertos':15,
+        'velocidad_red':16,'poe':17,'gestionable':18,'tipo_imp':19,
+        'color_imp':20,'formato_papel':21,'wifi_imp':22,'duplex':23,
+        'potencia_va':24,'capacidad':25,'usb_ver':26,'tipo_ram':27,
+        'capacidad_ram':28,'velocidad_ram':29,'formato_ram':30,
+    }, separators=(',',':'))
 
-          # Construir índice: fam → sub → sub2 → count
-          # y atributos: fam|sub → {attrName: {val: count}}
-          'function _build(){'
-            '_orig.forEach(function(p){'
-              'var f=p.fam,s=p.sub,s2=p.sub2||"";'
-              'if(!f)return;'
-              'if(!_idx[f])_idx[f]={};'
-              'if(!_idx[f][s])_idx[f][s]={};'
-              'if(s2){_idx[f][s][s2]=(_idx[f][s][s2]||0)+1;}'
-              # Atributos
-              'if(p.a){'
-                'var k=f+"\\x00"+s;'
-                'if(!_aidx[k])_aidx[k]={};'
-                'Object.keys(p.a).forEach(function(ak){'
-                  'if(!_aidx[k][ak])_aidx[k][ak]={};'
-                  'var av=p.a[ak];'
-                  '_aidx[k][ak][av]=(_aidx[k][ak][av]||0)+1;'
-                '});'
-              '}'
-            '});'
-          '}'
+    js_lines = [
+        '<script>(function(){',
+        'var _orig=null,_aidx={},_sel={},_curFam=null;',
+        f'var LBL={LBL};',
+        f'var PRI={PRI};',
+        'var SKIP={color:1};',
 
-          # Mapa de nombres legibles para los atributos
-          'var ATTR_LABELS={'
-            '"pantalla":"Tamaño pantalla",'
-            '"procesador":"Procesador",'
-            '"ram":"Memoria RAM",'
-            '"almacenamiento":"Almacenamiento",'
-            '"tipo_disco":"Tipo de disco",'
-            '"sistema_op":"Sistema operativo",'
-            '"resolucion":"Resolución",'
-            '"panel":"Tipo de panel",'
-            '"refresco":"Tasa de refresco",'
-            '"conectividad":"Conectividad",'
-            '"tipo_cable":"Tipo de cable",'
-            '"longitud":"Longitud",'
-            '"color":"Color",'
-            '"tipo_imp":"Tipo de impresora",'
-            '"formato_papel":"Formato papel",'
-            '"wifi_imp":"WiFi",'
-            '"puertos":"Nº de puertos",'
-            '"velocidad_red":"Velocidad",'
-            '"poe":"PoE",'
-            '"potencia":"Potencia",'
-            '"capacidad":"Capacidad",'
-            '"tipo_ram":"Tipo RAM",'
-            '"capacidad_ram":"Capacidad RAM",'
-            '"formato_ram":"Formato"'
-          '};'
+        # Build index by family
+        'function _build(){_orig.forEach(function(p){',
+        'var f=p.fam;if(!f||!p.a)return;',
+        'if(!_aidx[f])_aidx[f]={};',
+        'Object.keys(p.a).forEach(function(k){',
+        'var v=p.a[k];if(!v)return;',
+        'if(!_aidx[f][k])_aidx[f][k]={};',
+        '_aidx[f][k][v]=(_aidx[f][k][v]||0)+1;',
+        '});});}',
 
-          # Atributos que NO mostrar como filtro (demasiado genéricos o ruidosos)
-          'var ATTR_SKIP={"color":1};'
+        # Detect current family: if all visible products share same fam
+        'function _detectFam(){',
+        'var arr=window.ALL||[];if(!arr.length)return null;',
+        'var f=arr[0].fam||null;',
+        'for(var i=1;i<Math.min(arr.length,200);i++){if(arr[i].fam!==f)return null;}',
+        'return f;}',
 
+        # Count matching products
+        'function _count(f,at){',
+        'return _orig.filter(function(p){',
+        'if(p.fam!==f)return false;',
+        'if(Object.keys(at).length&&!p.a)return false;',
+        'for(var k in at){if(at[k]&&(!p.a||p.a[k]!==at[k]))return false;}',
+        'return true;}).length;}',
 
-            'return _orig.filter(function(p){'
-              'if(f&&p.fam!==f)return false;'
-              'if(s&&p.sub!==s)return false;'
-              'if(s2&&(p.sub2||"")!==s2)return false;'
-              'if(at&&Object.keys(at).length&&p.a){'
-                'for(var k in at){if(at[k]&&p.a[k]!==at[k])return false;}'
-              '}'
-              'return true;'
-            '}).length;'
-          '}'
+        # Apply attr filter — keeps only products of current fam matching _sel
+        'function _apply(){',
+        'if(!_curFam){window.ALL=_orig.slice();}',
+        'else if(!Object.keys(_sel).length){',
+        'window.ALL=_orig.filter(function(p){return p.fam===_curFam;});}',
+        'else{var sel=_sel;',
+        'window.ALL=_orig.filter(function(p){',
+        'if(p.fam!==_curFam)return false;',
+        'if(!p.a)return false;',
+        'for(var k in sel){if(sel[k]&&p.a[k]!==sel[k])return false;}',
+        'return true;});}',
+        'if(typeof applyAll==="function")applyAll();}',
 
-          # Aplicar filtro: modifica window.ALL y llama applyAll()
-          'function _apply(){'
-            'var f=_st.fam,s=_st.sub,s2=_st.sub2,at=_st.attrs;'
-            'var hasAt=Object.keys(at).length>0;'
-            'window.ALL=_orig.filter(function(p){'
-              'if(f&&p.fam!==f)return false;'
-              'if(s&&p.sub!==s)return false;'
-              'if(s2&&(p.sub2||"")!==s2)return false;'
-              'if(hasAt&&p.a){'
-                'for(var k in at){if(at[k]&&p.a[k]!==at[k])return false;}'
-              '}'
-              'return true;'
-            '});'
-            'if(typeof applyAll==="function")applyAll();'
-          '}'
+        # DOM helpers
+        'function _el(t,c){var e=document.createElement(t);if(c)e.className=c;return e;}',
 
-          # Helpers DOM
-          'function _el(tag,cls){'
-            'var e=document.createElement(tag);'
-            'if(cls)e.className=cls;return e;'
-          '}'
-          'function _btn(txt,n,active,fn){'
-            'var b=_el("button","ifx-btn"+(active?" on":""));'
-            'b.innerHTML=txt+(n!==null?"<span class=\'ifx-count\'>("+n+")</span>":"");'
-            'b.onclick=fn;return b;'
-          '}'
+        # Render attribute filter panel
+        'function _render(fam){',
+        'var cont=document.getElementById("ifx-attrs");',
+        'if(!cont){cont=_el("div");cont.id="ifx-attrs";',
+        'var tb=document.querySelector(".toolbar");',
+        'if(tb&&tb.parentNode)tb.parentNode.insertBefore(cont,tb.nextSibling);',
+        'else{var grid=document.getElementById("grid");',
+        'if(grid&&grid.parentNode)grid.parentNode.insertBefore(cont,grid);}}',
+        'if(!fam){cont.innerHTML="";return;}',
+        'var amap=_aidx[fam]||{};',
+        'var keys=Object.keys(amap).filter(function(k){',
+        'return !SKIP[k]&&Object.keys(amap[k]).length>=2;});',
+        'keys.sort(function(a,b){return(PRI[a]||99)-(PRI[b]||99);});',
+        'if(!keys.length){cont.innerHTML="";return;}',
+        'var wrap=_el("div");',
+        'keys.forEach(function(ak){',
+        'wrap.appendChild(_el("div","ifx-asep"));',
+        'var row=_el("div","ifx-arow");',
+        'var lbl=_el("span","ifx-albl");lbl.textContent=LBL[ak]||ak;row.appendChild(lbl);',
+        # Todos button
+        'var bt=_el("button","ifx-abtn"+((!_sel[ak])?" on":""));',
+        'bt.textContent="Todos";',
+        'bt.onclick=(function(k){return function(){delete _sel[k];_apply();_render(_curFam);};})(ak);',
+        'row.appendChild(bt);',
+        # Value buttons
+        'var vals=Object.keys(amap[ak]).sort(function(a,b){',
+        'var na=parseFloat(a),nb=parseFloat(b);',
+        'return(!isNaN(na)&&!isNaN(nb))?na-nb:(a<b?-1:a>b?1:0);});',
+        'vals.forEach(function(v){',
+        'var cnt=_count(fam,Object.assign({},_sel,(function(o){o[ak]=v;return o;})({})));',
+        'if(cnt===0)return;',
+        'var btn=_el("button","ifx-abtn"+(_sel[ak]===v?" on":""));',
+        'btn.innerHTML=v+"<span class=\'ifx-acnt\'>("+cnt+")</span>";',
+        'btn.onclick=(function(k,vv){return function(){_sel[k]=vv;_apply();_render(_curFam);};})(ak,v);',
+        'row.appendChild(btn);});',
+        'wrap.appendChild(row);});',
+        'cont.innerHTML="";cont.appendChild(wrap);}',
 
-          # Renderizar navegación completa
-          'function _renderNav(){'
-            'var nav=document.getElementById("catNavIn");'
-            'if(!nav)return;'
+        # Check: detect fam and re-render attrs
+        'function _check(){',
+        'var fam=_detectFam();',
+        'if(fam!==_curFam){_curFam=fam;_sel={};}',
+        '_render(fam);}',
 
-            'var wrap=_el("div");wrap.id="ifx-nav";'
+        # Init
+        'function init(){',
+        'if(!window.ALL||!window.ALL.length){setTimeout(init,400);return;}',
+        '_orig=window.ALL.slice();_build();',
+        'var grid=document.getElementById("grid");',
+        'if(grid)new MutationObserver(function(){',
+        'clearTimeout(window.__ifx_t);window.__ifx_t=setTimeout(_check,100);',
+        '}).observe(grid,{childList:true});',
+        'var nav=document.getElementById("catNavIn");',
+        'if(nav)nav.addEventListener("click",function(){setTimeout(_check,150);},true);',
+        'setTimeout(_check,300);}',
 
-            # ── Nivel 1: Familias ──
-            'var fr=_el("div","ifx-row");'
-            # Todos
-            'fr.appendChild(_btn("Todos",_orig.length,!_st.fam,function(){'
-              '_st={fam:null,sub:null,sub2:null,attrs:{}};_apply();_renderNav();'
-            '}));'
+        'if(document.readyState==="loading")',
+        'document.addEventListener("DOMContentLoaded",init);',
+        'else{init();setTimeout(init,800);}',
+        '})();</script>',
+    ]
 
-            'Object.keys(_idx).sort().forEach(function(f){'
-              'var subs=_idx[f];'
-              'var n=Object.keys(subs).reduce(function(a,s){'
-                'return a+Object.keys(subs[s]).reduce(function(b,k){return b+(subs[s][k]||1);},0);'
-              '},0);'
-              'if(!n)n=_count(f,null,null,{});'
-              'fr.appendChild(_btn(f,n,_st.fam===f,function(ff){'
-                'return function(){'
-                  '_st={fam:ff,sub:null,sub2:null,attrs:{}};_apply();_renderNav();'
-                '};'
-              '}(f)));'
-            '});'
-            'wrap.appendChild(fr);'
-
-            # ── Nivel 2: Subfamilias ──
-            'if(_st.fam&&_idx[_st.fam]){'
-              'var subs=_idx[_st.fam];'
-              'var sk=Object.keys(subs).filter(Boolean).sort();'
-              'if(sk.length>0){'
-                'wrap.appendChild(_el("div","ifx-sep"));'
-                'var sr=_el("div","ifx-row");'
-                'var sl=_el("span","ifx-lbl");sl.textContent="Subcategoría";'
-                'sr.appendChild(sl);'
-                'sr.appendChild(_btn("Todas",_count(_st.fam,null,null,{}),!_st.sub,function(){'
-                  '_st.sub=null;_st.sub2=null;_st.attrs={};_apply();_renderNav();'
-                '}));'
-                'sk.forEach(function(s){'
-                  'var n=_count(_st.fam,s,null,{});'
-                  'sr.appendChild(_btn(s,n,_st.sub===s,function(ss){'
-                    'return function(){'
-                      '_st.sub=ss;_st.sub2=null;_st.attrs={};_apply();_renderNav();'
-                    '};'
-                  '}(s)));'
-                '});'
-                'wrap.appendChild(sr);'
-              '}'
-
-              # ── Nivel 3: Tipo (sub2) ──
-              'if(_st.sub&&subs[_st.sub]){'
-                'var s2k=Object.keys(subs[_st.sub]).filter(Boolean).sort();'
-                'if(s2k.length>1){'
-                  'wrap.appendChild(_el("div","ifx-sep"));'
-                  'var s2r=_el("div","ifx-row");'
-                  'var s2l=_el("span","ifx-lbl");s2l.textContent="Tipo";'
-                  's2r.appendChild(s2l);'
-                  's2r.appendChild(_btn("Todos",_count(_st.fam,_st.sub,null,{}),!_st.sub2,function(){'
-                    '_st.sub2=null;_st.attrs={};_apply();_renderNav();'
-                  '}));'
-                  's2k.forEach(function(s2){'
-                    'var n=subs[_st.sub][s2]||_count(_st.fam,_st.sub,s2,{});'
-                    's2r.appendChild(_btn(s2,n,_st.sub2===s2,function(s2v){'
-                      'return function(){'
-                        '_st.sub2=s2v;_st.attrs={};_apply();_renderNav();'
-                      '};'
-                    '}(s2)));'
-                  '});'
-                  'wrap.appendChild(s2r);'
-                '}'
-              '}'
-
-              # ── Atributos ──
-              'var ak=(_st.fam||"")+"\\x00"+(_st.sub||"");'
-              'var amap=_aidx[ak]||{};'
-              'var akeys=Object.keys(amap).sort(function(a,b){'
-                # Orden de atributos más relevantes primero
-                'var PRI={"pantalla":0,"procesador":1,"ram":2,"almacenamiento":3,'
-                         '"tipo_disco":4,"sistema_op":5,"resolucion":6,"panel":7,'
-                         '"refresco":8,"conectividad":9,"tipo_cable":10,"longitud":11,'
-                         '"puertos":12,"velocidad_red":13,"poe":14,"tipo_imp":15,'
-                         '"formato_papel":16,"wifi_imp":17,"potencia":18,"capacidad":19,'
-                         '"tipo_ram":20,"capacidad_ram":21,"formato_ram":22};'
-                'return (PRI[a]||99)-(PRI[b]||99);'
-              '});'
-              'akeys.forEach(function(an){'
-                'if(ATTR_SKIP[an])return;'
-                'var vals=Object.keys(amap[an]).sort();'
-                'if(vals.length<2)return;'
-                'wrap.appendChild(_el("div","ifx-sep"));'
-                'var ar=_el("div","ifx-row");'
-                'var al=_el("span","ifx-lbl");'
-                'al.textContent=ATTR_LABELS[an]||an;'
-                'ar.appendChild(al);'
-                'ar.appendChild(_btn("Todos",null,!_st.attrs[an],function(ann){'
-                  'return function(){delete _st.attrs[ann];_apply();_renderNav();};'
-                '}(an)));'
-                'vals.forEach(function(v){'
-                  'var cnt=_count(_st.fam,_st.sub,_st.sub2,'
-                    'Object.assign({},_st.attrs,(function(o){o[an]=v;return o;})({}))'
-                  ');'
-                  'ar.appendChild(_btn(v,cnt,_st.attrs[an]===v,function(ann,vv){'
-                    'return function(){_st.attrs[ann]=vv;_apply();_renderNav();};'
-                  '}(an,v)));'
-                '});'
-                'wrap.appendChild(ar);'
-              '});'
-            '}'
-
-            'nav.innerHTML="";nav.appendChild(wrap);'
-          '}'
-
-          'init();'
-        '})();'
-        '</script>'
-    )
-    return css + js
+    return css + ''.join(js_lines)
 
 
 def _build_stock_patch(stock_data, var_suffix):
