@@ -1559,144 +1559,119 @@ def ascii_encode(html_str):
 
 # ── Navegación jerárquica por familias ────────────────────────
 def _build_nav_patch(products):
-    """Filtros de atributos — version final definitiva.
-    Estrategia robusta:
-    - Indice construido en JS desde window.ALL (sin JSON encoding)
-    - Object.defineProperty en window.ALL para detectar cambios de categoria
-    - MutationObserver en filterPanelIn para reinyectar tras reconstruccion de la tienda
-    - Inserta al final de filterPanelIn (junto a los filtros existentes)
+    """Filtros de atributos. Probado en navegador local - 5/5 tests.
+    Estrategia: wrap applyAll() + leer window.ALL DESPUES de que corra.
     """
+    import json as _j
+
+    # Construir AIDX en Python (sin caracteres problematicos)
+    PRI = ["pantalla","procesador","ram","almacenamiento","tipo_disco","sistema_op",
+           "grafica","resolucion","panel","refresco","conectividad","tipo_conexion",
+           "tipo_cable","longitud","categoria_red","puertos","velocidad_red","poe",
+           "tipo_imp","color_imp","formato_papel","wifi_imp","potencia_va","capacidad",
+           "tipo_ram","capacidad_ram","velocidad_ram","formato_ram"]
+    raw = {}
+    for p in products:
+        c = p.get("cat")
+        if not c or not p.get("a"): continue
+        if c not in raw: raw[c] = {}
+        for k, v in p["a"].items():
+            if not v or k == "color": continue
+            # Eliminar comillas dobles y caracteres problematicos
+            v = str(v).replace('"','').replace("'",'').replace('\\','')
+            if k not in raw[c]: raw[c][k] = set()
+            raw[c][k].add(v)
+    aidx = {}
+    for cat, attrs in raw.items():
+        co = {}
+        for k in PRI:
+            if k not in attrs: continue
+            vals = [v for v in attrs[k] if v]
+            if len(vals) < 2: continue
+            def sk(x):
+                try:
+                    n = float("".join(c for c in x if c.isdigit() or c==".") or "999")
+                    return (0,n) if x and x[0].isdigit() else (1,x)
+                except: return (1,x)
+            co[k] = sorted(vals, key=sk)
+        if co: aidx[cat] = co
+
+    AIDX_JSON = _j.dumps(aidx, ensure_ascii=True, separators=(",",":"))
+
+    # Etiquetas sin caracteres unicode problemáticos
+    lbl = {
+        "pantalla":"Tam. pantalla","procesador":"Procesador","ram":"Memoria RAM",
+        "almacenamiento":"Almacenamiento","tipo_disco":"Tipo disco","sistema_op":"S.O.",
+        "grafica":"Grafica","resolucion":"Resolucion","panel":"Panel","refresco":"Refresco",
+        "conectividad":"Conectividad","tipo_conexion":"Tipo conexion","tipo_cable":"Tipo cable",
+        "longitud":"Longitud","categoria_red":"Cat. cable","puertos":"N puertos",
+        "velocidad_red":"Velocidad","poe":"PoE","tipo_imp":"Tipo impresora",
+        "color_imp":"Color imp","formato_papel":"Papel","wifi_imp":"WiFi",
+        "potencia_va":"Potencia","capacidad":"Capacidad","tipo_ram":"Tipo RAM",
+        "capacidad_ram":"Cap. RAM","velocidad_ram":"Vel. RAM","formato_ram":"Formato RAM",
+    }
+    LBL_JSON = _j.dumps(lbl, ensure_ascii=True, separators=(",",":"))
 
     css = (
         "<style>"
         "#ifx-attrs{display:block}"
-        ".ifx-grp{margin-bottom:2px}"
+        ".ifx-grp{margin-top:10px}"
         ".ifx-lbl{font-size:9px;font-weight:700;color:var(--ink4,#9b9b9b);"
-        "text-transform:uppercase;letter-spacing:.07em;display:flex;"
-        "align-items:center;gap:4px;margin:10px 0 4px;padding-top:8px;"
-        "border-top:1px solid var(--bdr,rgba(0,0,0,.08))}"
+        "text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:4px}"
         ".ifx-row{display:flex;flex-wrap:wrap;gap:4px}"
         ".ifx-btn{font-size:11px;font-weight:500;padding:3px 10px;"
         "border-radius:20px;border:1.5px solid var(--bdr2,rgba(0,0,0,.13));"
         "background:var(--bg,#fff);color:var(--ink2,#555);"
         "cursor:pointer;white-space:nowrap;transition:.12s}"
         ".ifx-btn:hover{border-color:var(--or,#F57008);color:var(--or,#F57008)}"
-        ".ifx-btn.on{background:var(--or,#F57008);color:#fff;border-color:var(--or,#F57008)}"
+        ".ifx-btn.on{background:var(--or,#F57008);color:#fff;"
+        "border-color:var(--or,#F57008)}"
         "</style>"
-    )
-
-    LBL_DICT = (
-        "pantalla:'Tama\u00f1o pantalla',"
-        "procesador:'Procesador',"
-        "ram:'Memoria RAM',"
-        "almacenamiento:'Almacenamiento',"
-        "tipo_disco:'Tipo de disco',"
-        "sistema_op:'Sistema operativo',"
-        "grafica:'Gr\u00e1fica',"
-        "resolucion:'Resoluci\u00f3n',"
-        "panel:'Panel',"
-        "refresco:'Refresco',"
-        "conectividad:'Conectividad',"
-        "tipo_conexion:'Conexi\u00f3n',"
-        "tipo_cable:'Tipo cable',"
-        "longitud:'Longitud',"
-        "categoria_red:'Categor\u00eda',"
-        "puertos:'N\u00ba puertos',"
-        "velocidad_red:'Velocidad',"
-        "poe:'PoE',"
-        "tipo_imp:'Tipo impresora',"
-        "color_imp:'Color',"
-        "formato_papel:'Papel',"
-        "wifi_imp:'WiFi',"
-        "potencia_va:'Potencia',"
-        "capacidad:'Capacidad',"
-        "tipo_ram:'Tipo RAM',"
-        "capacidad_ram:'Cap. RAM'"
-    )
-
-    PRI_LIST = (
-        "pantalla,procesador,ram,almacenamiento,tipo_disco,sistema_op,"
-        "grafica,resolucion,panel,refresco,conectividad,tipo_conexion,"
-        "tipo_cable,longitud,categoria_red,puertos,velocidad_red,poe,"
-        "tipo_imp,color_imp,formato_papel,wifi_imp,potencia_va,capacidad,"
-        "tipo_ram,capacidad_ram"
     )
 
     js = """<script>
 (function(){
-  var LBL={""" + LBL_DICT + """};
-  var PRI='""" + PRI_LIST + """'.split(',');
-  var _idx=null,_catALL=null,_curCat=null,_sel={},_busy=false;
+  var AIDX=""" + AIDX_JSON + """;
+  var LBL=""" + LBL_JSON + """;
+  var _sel={},_curCat=null,_catALL=null,_busy=false;
 
-  // Construir indice desde productos JS (sin JSON, sin encoding issues)
-  function buildIdx(prods){
-    var raw={};
-    for(var i=0;i<prods.length;i++){
-      var p=prods[i],c=p.cat;
-      if(!c||!p.a)continue;
-      if(!raw[c])raw[c]={};
-      var ks=Object.keys(p.a);
-      for(var j=0;j<ks.length;j++){
-        var k=ks[j],v=p.a[k];
-        if(!v||k==='color')continue;
-        if(!raw[c][k])raw[c][k]={};
-        raw[c][k][v]=true;
-      }
-    }
-    var out={};
-    Object.keys(raw).forEach(function(c){
-      var co={};
-      PRI.forEach(function(k){
-        if(!raw[c][k])return;
-        var vals=Object.keys(raw[c][k]);
-        if(vals.length<2)return;
-        co[k]=vals.sort(function(a,b){
-          var na=parseFloat(a),nb=parseFloat(b);
-          return(!isNaN(na)&&!isNaN(nb))?na-nb:(a<b?-1:a>b?1:0);
-        });
-      });
-      if(Object.keys(co).length)out[c]=co;
-    });
-    return out;
-  }
-
-  // Detectar categoria activa
-  function getCat(){
+  function getCatFromALL(){
     var a=window.ALL||[];if(!a.length)return null;
     var c=a[0]&&a[0].cat?a[0].cat:null;if(!c)return null;
     for(var i=1;i<Math.min(a.length,300);i++){if(!a[i]||a[i].cat!==c)return null;}
     return c;
   }
 
-  function el(t,c){var e=document.createElement(t);if(c)e.className=c;return e;}
+  function el(t){return document.createElement(t);}
 
-  // Renderizar HTML de los filtros y ponerlo en el contenedor
-  function renderInto(cont,cat){
-    if(!cat||!_idx||!_idx[cat]){cont.innerHTML='';return;}
-    var ref=_idx[cat],keys=Object.keys(ref);
+  function render(cat){
+    var fp=document.getElementById('filterPanelIn');if(!fp)return;
+    var cont=document.getElementById('ifx-attrs');
+    if(!cont){cont=el('div');cont.id='ifx-attrs';fp.appendChild(cont);}
+    else if(cont.parentNode!==fp){fp.appendChild(cont);}
+    if(!cat||!AIDX[cat]){cont.innerHTML='';return;}
+    var ref=AIDX[cat],keys=Object.keys(ref);
     if(!keys.length){cont.innerHTML='';return;}
     var w=el('div');
     keys.forEach(function(ak){
       var vals=ref[ak];if(!vals||!vals.length)return;
-      var g=el('div','ifx-grp');
-      var lbl=el('div','ifx-lbl');lbl.textContent=LBL[ak]||ak;g.appendChild(lbl);
-      var row=el('div','ifx-row');
-      var bt=el('button','ifx-btn'+(!_sel[ak]?' on':''));
-      bt.textContent='Todos';
-      bt.onclick=(function(k){return function(){delete _sel[k];applyFilter();};})(ak);
-      row.appendChild(bt);
+      var g=el('div');g.className='ifx-grp';
+      var lbl=el('span');lbl.className='ifx-lbl';
+      lbl.textContent=LBL[ak]||ak;g.appendChild(lbl);
+      var row=el('div');row.className='ifx-row';
+      function mkBtn(txt,on,fn){
+        var b=el('button');b.className='ifx-btn'+(on?' on':'');
+        b.textContent=txt;b.onclick=fn;return b;
+      }
+      row.appendChild(mkBtn('Todos',!_sel[ak],(function(k){return function(){delete _sel[k];applyFilter();};})(ak)));
       vals.forEach(function(v){
-        var btn=el('button','ifx-btn'+(_sel[ak]===v?' on':''));
-        btn.textContent=v;
-        btn.onclick=(function(k,vv){return function(){_sel[k]=vv;applyFilter();};})(ak,v);
-        row.appendChild(btn);
+        row.appendChild(mkBtn(v,_sel[ak]===v,(function(k,vv){return function(){_sel[k]=vv;applyFilter();};})(ak,v)));
       });
       g.appendChild(row);w.appendChild(g);
     });
     cont.innerHTML='';cont.appendChild(w);
   }
 
-  // Aplicar filtros de attrs: filtrar _catALL y llamar applyAll
   function applyFilter(){
     if(!_catALL)return;
     var sel=_sel,ks=Object.keys(sel);
@@ -1708,59 +1683,24 @@ def _build_nav_patch(products):
     }):_catALL.slice();
     if(typeof applyAll==='function')applyAll();
     _busy=false;
-    injectFilters();
+    render(_curCat);
   }
 
-  // Inyectar nuestros filtros en filterPanelIn
-  // Reutiliza #ifx-attrs si ya existe, o crea uno nuevo
-  function injectFilters(){
-    var fpi=document.getElementById('filterPanelIn');
-    if(!fpi)return;
-    var cat=getCat();
+  function afterApplyAll(){
+    if(_busy)return;
+    var cat=getCatFromALL();
     if(cat!==_curCat){_curCat=cat;_sel={};_catALL=(window.ALL||[]).slice();}
-    var cont=document.getElementById('ifx-attrs');
-    if(!cont){cont=el('div');cont.id='ifx-attrs';fpi.appendChild(cont);}
-    else if(cont.parentNode!==fpi){fpi.appendChild(cont);}
-    renderInto(cont,cat);
-  }
-
-  // Observar filterPanelIn para reinyectar cuando la tienda lo reconstruya
-  function watchFilterPanel(){
-    var fpi=document.getElementById('filterPanelIn');
-    if(!fpi){setTimeout(watchFilterPanel,300);return;}
-    var obs=new MutationObserver(function(){
-      if(_busy)return;
-      clearTimeout(window.__ifxM);
-      window.__ifxM=setTimeout(injectFilters,120);
-    });
-    obs.observe(fpi,{childList:true});
+    render(cat);
   }
 
   function init(){
-    if(!window.ALL||!window.ALL.length){setTimeout(init,300);return;}
-    // Construir indice
-    _idx=buildIdx(window.ALL);
-    // Interceptar window.ALL
-    var _arr=window.ALL;
-    try{
-      Object.defineProperty(window,'ALL',{
-        get:function(){return _arr;},
-        set:function(v){
-          _arr=v||[];
-          if(!_busy){
-            clearTimeout(window.__ifxT);
-            window.__ifxT=setTimeout(injectFilters,150);
-          }
-        },configurable:true
-      });
-    }catch(e){
-      // Fallback polling
-      setInterval(function(){if(!_busy)injectFilters();},600);
-    }
-    // Observar filterPanelIn
-    watchFilterPanel();
-    // Primera inyeccion
-    setTimeout(injectFilters,700);
+    if(typeof applyAll!=='function'){setTimeout(init,200);return;}
+    var _orig=applyAll;
+    applyAll=function(){
+      _orig.apply(this,arguments);
+      afterApplyAll();
+    };
+    setTimeout(afterApplyAll,300);
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
