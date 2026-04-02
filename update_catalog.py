@@ -1684,7 +1684,7 @@ def _build_nav_patch(products):
   // Inyecta nuestros filtros en filterPanelIn
   // Desconecta el observer para no disparar un bucle
   function inject(){
-    var fp=document.getElementById('filterPanelIn');
+    var fp=document.getElementById('fpin');
     if(!fp)return;
     // Desconectar observer antes de modificar DOM
     if(_obs){_obs.disconnect();}
@@ -1721,7 +1721,7 @@ def _build_nav_patch(products):
 
   // Iniciar observador sobre filterPanelIn
   function startObserver(){
-    var fp=document.getElementById('filterPanelIn');
+    var fp=document.getElementById('fpin');
     if(!fp){setTimeout(startObserver,300);return;}
     _obs=new MutationObserver(function(){
       if(_busy)return;
