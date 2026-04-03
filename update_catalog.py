@@ -1559,34 +1559,61 @@ def ascii_encode(html_str):
 
 # ── Navegación jerárquica por familias ────────────────────────
 def _build_nav_patch(products):
-    """Filtros de atributos.
-    La tienda usa variable global `cat` para la categoría activa.
-    window.ALL siempre tiene todos los productos (no se filtra).
-    Estrategia: leer window.cat, filtrar _ORIG por cat, inyectar en #fpin.
-    MutationObserver en #fpin + tryWrap(applyAll) + polling.
+    """Filtros de atributos v3:
+    - Attrs especificos por categoria (no genérico)
+    - Multi-seleccion por atributo (OR dentro del atributo, AND entre atributos)
+    - Iconos en etiquetas
+    - Layout compacto horizontal
     """
     import json as _j
 
-    # Construir AIDX en Python
-    PRI = ["pantalla","procesador","ram","almacenamiento","tipo_disco","sistema_op",
-           "grafica","resolucion","panel","refresco","conectividad","tipo_conexion",
-           "tipo_cable","longitud","categoria_red","puertos","velocidad_red","poe",
-           "tipo_imp","color_imp","formato_papel","wifi_imp","potencia_va","capacidad",
-           "tipo_ram","capacidad_ram","velocidad_ram","formato_ram"]
+    # Atributos permitidos por categoria (solo los relevantes)
+    CAT_ATTRS = {
+        "portatiles":   ["pantalla","procesador","ram","almacenamiento","tipo_disco","sistema_op","grafica"],
+        "ordenadores":  ["procesador","ram","almacenamiento","tipo_disco","sistema_op"],
+        "monitores":    ["pantalla","panel","resolucion","refresco"],
+        "componentes":  ["tipo_ram","capacidad_ram","velocidad_ram","formato_ram","almacenamiento","tipo_disco","procesador"],
+        "impresoras":   ["tipo_imp","color_imp","formato_papel","wifi_imp"],
+        "escaneres":    ["tipo_imp"],
+        "cables":       ["tipo_cable","longitud"],
+        "cable_red":    ["tipo_cable","longitud","categoria_red"],
+        "redes":        ["puertos","velocidad_red","poe","gestionable"],
+        "tablets":      ["pantalla","ram","almacenamiento","conectividad"],
+        "smartphones":  ["pantalla","ram","almacenamiento","conectividad"],
+        "audio":        ["tipo_conexion","conectividad"],
+        "perifericos":  ["conectividad","capacidad","usb_ver"],
+        "sai_ups":      ["potencia_va"],
+        "tpv":          ["tipo_imp","pantalla"],
+        "disco_externo":["almacenamiento","tipo_disco"],
+        "nas":          ["almacenamiento","tipo_disco"],
+        "wearables":    ["conectividad"],
+        "camaras":      ["resolucion"],
+        "fundas":       ["pantalla"],
+        "powerbank":    ["capacidad"],
+        "gaming":       ["conectividad"],
+        "consumibles":  [],
+        "software":     [],
+    }
+
+    # Construir AIDX solo con attrs relevantes para cada cat
     raw = {}
     for p in products:
         c = p.get("cat")
-        if not c or not p.get("a"): continue
+        allowed = CAT_ATTRS.get(c, [])
+        if not c or not p.get("a") or not allowed: continue
         if c not in raw: raw[c] = {}
         for k, v in p["a"].items():
+            if k not in allowed: continue
             if not v or k == "color": continue
             v = str(v).replace('"','').replace("'",'').replace('\\','')
             if k not in raw[c]: raw[c][k] = set()
             raw[c][k].add(v)
+
     aidx = {}
     for cat, attrs in raw.items():
+        allowed = CAT_ATTRS.get(cat, [])
         co = {}
-        for k in PRI:
+        for k in allowed:  # mantener orden de CAT_ATTRS
             if k not in attrs: continue
             vals = [v for v in attrs[k] if v]
             if len(vals) < 2: continue
@@ -1599,36 +1626,52 @@ def _build_nav_patch(products):
         if co: aidx[cat] = co
 
     AIDX_JSON = _j.dumps(aidx, ensure_ascii=True, separators=(",",":"))
+    CAT_ATTRS_JSON = _j.dumps(CAT_ATTRS, ensure_ascii=True, separators=(",",":"))
 
     lbl = {
-        "pantalla":"Tam. pantalla","procesador":"Procesador","ram":"Memoria RAM",
-        "almacenamiento":"Almacenamiento","tipo_disco":"Tipo disco","sistema_op":"S.O.",
+        "pantalla":"Pantalla","procesador":"Procesador","ram":"RAM",
+        "almacenamiento":"Disco","tipo_disco":"Tipo disco","sistema_op":"Sistema op.",
         "grafica":"Grafica","resolucion":"Resolucion","panel":"Panel",
         "refresco":"Refresco","conectividad":"Conectividad",
-        "tipo_conexion":"Tipo conexion","tipo_cable":"Tipo cable","longitud":"Longitud",
-        "categoria_red":"Cat. cable","puertos":"N puertos","velocidad_red":"Velocidad",
-        "poe":"PoE","tipo_imp":"Tipo impresora","color_imp":"Color imp",
-        "formato_papel":"Papel","wifi_imp":"WiFi","potencia_va":"Potencia",
-        "capacidad":"Capacidad","tipo_ram":"Tipo RAM","capacidad_ram":"Cap. RAM",
-        "velocidad_ram":"Vel. RAM","formato_ram":"Formato RAM",
+        "tipo_conexion":"Conexion","tipo_cable":"Tipo cable","longitud":"Longitud",
+        "categoria_red":"Categoria","puertos":"Puertos","velocidad_red":"Velocidad",
+        "poe":"PoE","gestionable":"Gestionable","tipo_imp":"Tipo",
+        "color_imp":"Color","formato_papel":"Papel","wifi_imp":"WiFi",
+        "potencia_va":"Potencia","capacidad":"Capacidad",
+        "usb_ver":"USB","tipo_ram":"Tipo RAM","capacidad_ram":"Capacidad",
+        "velocidad_ram":"Velocidad","formato_ram":"Formato",
     }
-    LBL_JSON = _j.dumps(lbl, ensure_ascii=True, separators=(",",":"))
+    icons = {
+        "pantalla":"📐","procesador":"⚙️","ram":"🧠","almacenamiento":"💾",
+        "tipo_disco":"💿","sistema_op":"🖥️","grafica":"🎮","resolucion":"🔭",
+        "panel":"🎨","refresco":"⚡","conectividad":"📶","tipo_conexion":"🔌",
+        "tipo_cable":"🔗","longitud":"📏","categoria_red":"🌐","puertos":"🔌",
+        "velocidad_red":"🚀","poe":"⚡","gestionable":"⚙️","tipo_imp":"🖨️",
+        "color_imp":"🎨","formato_papel":"📄","wifi_imp":"📶","potencia_va":"⚡",
+        "capacidad":"💾","usb_ver":"🔌","tipo_ram":"🧠","capacidad_ram":"🧠",
+        "velocidad_ram":"🚀","formato_ram":"📦",
+    }
+    LBL_JSON   = _j.dumps(lbl,   ensure_ascii=True, separators=(",",":"))
+    ICONS_JSON = _j.dumps(icons, ensure_ascii=False, separators=(",",":"))
 
     css = (
         "<style>"
-        "#ifx-attrs{display:block!important}"
-        ".ifx-section{padding:6px 0 2px}"
+        "#ifx-attrs{margin-top:4px}"
+        ".ifx-wrap{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:flex-start}"
+        ".ifx-section{min-width:160px;max-width:280px;flex:1 1 160px}"
         ".ifx-lbl{font-size:9px;font-weight:700;color:var(--ink4,#9b9b9b);"
-        "text-transform:uppercase;letter-spacing:.07em;display:flex;"
-        "align-items:center;gap:4px;margin-bottom:5px}"
-        ".ifx-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:2px}"
-        ".ifx-btn{font-size:11px;font-weight:500;padding:3px 10px;"
+        "text-transform:uppercase;letter-spacing:.06em;"
+        "display:flex;align-items:center;gap:3px;margin:0 0 4px}"
+        ".ifx-row{display:flex;flex-wrap:wrap;gap:3px}"
+        ".ifx-btn{font-size:11px;font-weight:500;padding:2px 9px;"
         "border-radius:20px;border:1.5px solid var(--bdr2,rgba(0,0,0,.13));"
         "background:var(--bg,#fff);color:var(--ink2,#555);"
-        "cursor:pointer;white-space:nowrap;transition:.12s}"
+        "cursor:pointer;white-space:nowrap;transition:.12s;line-height:1.5}"
         ".ifx-btn:hover{border-color:var(--or,#F57008);color:var(--or,#F57008)}"
         ".ifx-btn.on{background:var(--or,#F57008);color:#fff;"
         "border-color:var(--or,#F57008)}"
+        "#ifx-sep{height:1px;background:var(--bdr,rgba(0,0,0,.07));"
+        "margin:8px 0 6px}"
         "</style>"
     )
 
@@ -1636,86 +1679,96 @@ def _build_nav_patch(products):
 (function(){
   var AIDX=""" + AIDX_JSON + """;
   var LBL=""" + LBL_JSON + """;
+  var ICO=""" + ICONS_JSON + """;
+  // _sel[k] = Set of selected values (multi-select per attr)
   var _sel={}, _curCat=null, _catALL=null, _busy=false, _obs=null;
 
-  // Leer categoria activa: usar variable global `cat` de la tienda
   function getActiveCat(){
-    return (typeof cat !== 'undefined' && cat) ? String(cat) : null;
+    return (typeof cat!=='undefined'&&cat)?String(cat):null;
   }
-
-  // Obtener productos de la categoria activa desde window.ALL
   function getCatProducts(c){
     return (window.ALL||[]).filter(function(p){return p.cat===c;});
   }
-
   function el(t){return document.createElement(t);}
 
-  // Construir HTML de filtros para una categoria
+  // Contar productos que coinciden con seleccion completa excepto un atributo
+  function countMatch(prods, skipKey){
+    return prods.filter(function(p){
+      if(!p.a)return Object.keys(_sel).every(function(k){return k===skipKey||!_sel[k]||!_sel[k].size;});
+      return Object.keys(_sel).every(function(k){
+        if(k===skipKey)return true;
+        if(!_sel[k]||!_sel[k].size)return true;
+        return _sel[k].has(p.a[k]);
+      });
+    }).length;
+  }
+
   function buildFilters(c){
     if(!c||!AIDX[c])return null;
-    var ref=AIDX[c], keys=Object.keys(ref);
+    var ref=AIDX[c],keys=Object.keys(ref);
     if(!keys.length)return null;
-    var wrap=el('div');
+    var sep=el('div');sep.id='ifx-sep';
+    var wrap=el('div');wrap.className='ifx-wrap';
     keys.forEach(function(ak){
       var vals=ref[ak];if(!vals||!vals.length)return;
+      var sel=_sel[ak]||new Set();
       var sec=el('div');sec.className='ifx-section';
       var lbl=el('div');lbl.className='ifx-lbl';
-      lbl.textContent=LBL[ak]||ak;sec.appendChild(lbl);
+      lbl.innerHTML=(ICO[ak]?'<span>'+ICO[ak]+'</span>':'')+' '+(LBL[ak]||ak);
+      sec.appendChild(lbl);
       var row=el('div');row.className='ifx-row';
-      function mkBtn(txt,on,fn){
-        var b=el('button');b.className='ifx-btn'+(on?' on':'');
-        b.textContent=txt;b.onclick=fn;return b;
-      }
-      row.appendChild(mkBtn('Todos',!_sel[ak],(function(k){
-        return function(){delete _sel[k];applyFilter();};
-      })(ak)));
+      // Todos btn
+      var bt=el('button');
+      bt.className='ifx-btn'+((!sel||!sel.size)?' on':'');
+      bt.textContent='Todos';
+      bt.onclick=(function(k){return function(){
+        _sel[k]=new Set();applyFilter();
+      };})(ak);
+      row.appendChild(bt);
       vals.forEach(function(v){
-        row.appendChild(mkBtn(v,_sel[ak]===v,(function(k,vv){
-          return function(){_sel[k]=vv;applyFilter();};
-        })(ak,v)));
+        var on=sel&&sel.has(v);
+        var btn=el('button');
+        btn.className='ifx-btn'+(on?' on':'');
+        btn.textContent=v;
+        btn.onclick=(function(k,vv){return function(){
+          if(!_sel[k])_sel[k]=new Set();
+          if(_sel[k].has(vv))_sel[k].delete(vv);
+          else _sel[k].add(vv);
+          applyFilter();
+        };})(ak,v);
+        row.appendChild(btn);
       });
       sec.appendChild(row);wrap.appendChild(sec);
     });
-    return wrap;
+    var cont=el('div');
+    cont.appendChild(sep);cont.appendChild(wrap);
+    return cont;
   }
 
-  // Inyectar filtros en #fpin
   function inject(){
     var fp=document.getElementById('fpin');
     if(!fp)return;
     if(_obs)_obs.disconnect();
     var c=getActiveCat();
-    if(c!==_curCat){
-      _curCat=c;
-      _sel={};
-      _catALL=c?getCatProducts(c):null;
-    }
+    if(c!==_curCat){_curCat=c;_sel={};_catALL=c?getCatProducts(c):null;}
     var old=document.getElementById('ifx-attrs');
     if(old&&old.parentNode)old.parentNode.removeChild(old);
     var html=buildFilters(c);
-    if(html){
-      var cont=el('div');cont.id='ifx-attrs';
-      cont.appendChild(html);
-      fp.appendChild(cont);
-    }
+    if(html){var cont=el('div');cont.id='ifx-attrs';cont.appendChild(html);fp.appendChild(cont);}
     if(_obs)_obs.observe(fp,{childList:true});
   }
 
-  // Aplicar seleccion de atributos
   function applyFilter(){
     if(!_catALL||!_curCat)return;
-    var sel=_sel,ks=Object.keys(sel);
     _busy=true;
-    // Filtrar sobre catALL y actualizar window.ALL manteniendo
-    // los productos de otras categorias intactos
     var otherProds=(window.ALL||[]).filter(function(p){return p.cat!==_curCat;});
-    var filtered=ks.length?_catALL.filter(function(p){
-      if(!p.a)return false;
-      for(var i=0;i<ks.length;i++){
-        if(sel[ks[i]]&&p.a[ks[i]]!==sel[ks[i]])return false;
-      }return true;
-    }):_catALL.slice();
-    // Actualizar window.ALL: solo cambia la cat activa
+    var filtered=_catALL.filter(function(p){
+      if(!p.a)return Object.keys(_sel).every(function(k){return !_sel[k]||!_sel[k].size;});
+      return Object.keys(_sel).every(function(k){
+        if(!_sel[k]||!_sel[k].size)return true;
+        return _sel[k].has(p.a[k]);
+      });
+    });
     window.ALL=otherProds.concat(filtered);
     if(typeof applyAll==='function')applyAll();
     _busy=false;
@@ -1733,36 +1786,21 @@ def _build_nav_patch(products):
     _obs.observe(fp,{childList:true});
   }
 
-  function tryWrapApplyAll(){
+  function tryWrap(){
     if(typeof applyAll!=='function')return;
     var _orig=applyAll;
-    try{
-      applyAll=function(){
-        _orig.apply(this,arguments);
-        if(!_busy){
-          clearTimeout(window.__ifxW);
-          window.__ifxW=setTimeout(inject,80);
-        }
-      };
-    }catch(e){}
+    try{applyAll=function(){_orig.apply(this,arguments);if(!_busy){clearTimeout(window.__ifxW);window.__ifxW=setTimeout(inject,80);}};}catch(e){}
   }
 
   function init(){
     if(!window.ALL||!window.ALL.length){setTimeout(init,300);return;}
-    startObserver();
-    tryWrapApplyAll();
-    // Polling: detectar cambio de variable global `cat`
+    startObserver();tryWrap();
     var _lc=null;
-    setInterval(function(){
-      if(_busy)return;
-      var c=getActiveCat();
-      if(c!==_lc){_lc=c;clearTimeout(window.__ifxP);window.__ifxP=setTimeout(inject,100);}
-    },400);
+    setInterval(function(){if(_busy)return;var c=getActiveCat();if(c!==_lc){_lc=c;clearTimeout(window.__ifxP);window.__ifxP=setTimeout(inject,100);}},400);
     setTimeout(inject,800);
   }
 
-  if(document.readyState==='loading')
-    document.addEventListener('DOMContentLoaded',init);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
   else init();
 })();
 </script>"""
