@@ -1560,14 +1560,14 @@ def ascii_encode(html_str):
 # ── Navegación jerárquica por familias ────────────────────────
 def _build_nav_patch(products):
     """Filtros de atributos.
-    Estrategia triple (probada en navegador real):
-    1. MutationObserver en filterPanelIn con disconnect/reconnect (evita loops)
-    2. Envolver applyAll si es posible
-    3. Polling cada 500ms como red de seguridad
+    La tienda usa variable global `cat` para la categoría activa.
+    window.ALL siempre tiene todos los productos (no se filtra).
+    Estrategia: leer window.cat, filtrar _ORIG por cat, inyectar en #fpin.
+    MutationObserver en #fpin + tryWrap(applyAll) + polling.
     """
     import json as _j
 
-    # Construir AIDX en Python sin chars especiales
+    # Construir AIDX en Python
     PRI = ["pantalla","procesador","ram","almacenamiento","tipo_disco","sistema_op",
            "grafica","resolucion","panel","refresco","conectividad","tipo_conexion",
            "tipo_cable","longitud","categoria_red","puertos","velocidad_red","poe",
@@ -1616,11 +1616,11 @@ def _build_nav_patch(products):
 
     css = (
         "<style>"
-        "#ifx-attrs{display:block!important;visibility:visible!important}"
-        ".ifx-section{padding:8px 0 4px}"
+        "#ifx-attrs{display:block!important}"
+        ".ifx-section{padding:6px 0 2px}"
         ".ifx-lbl{font-size:9px;font-weight:700;color:var(--ink4,#9b9b9b);"
         "text-transform:uppercase;letter-spacing:.07em;display:flex;"
-        "align-items:center;gap:4px;margin-bottom:6px}"
+        "align-items:center;gap:4px;margin-bottom:5px}"
         ".ifx-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:2px}"
         ".ifx-btn{font-size:11px;font-weight:500;padding:3px 10px;"
         "border-radius:20px;border:1.5px solid var(--bdr2,rgba(0,0,0,.13));"
@@ -1638,24 +1638,22 @@ def _build_nav_patch(products):
   var LBL=""" + LBL_JSON + """;
   var _sel={}, _curCat=null, _catALL=null, _busy=false, _obs=null;
 
-  // Detectar cat activa: todos los productos de window.ALL tienen el mismo cat?
-  function getCat(){
-    var a=window.ALL||[];
-    if(!a.length)return null;
-    var c=a[0]&&a[0].cat?a[0].cat:null;
-    if(!c)return null;
-    for(var i=1;i<Math.min(a.length,300);i++){
-      if(!a[i]||a[i].cat!==c)return null;
-    }
-    return c;
+  // Leer categoria activa: usar variable global `cat` de la tienda
+  function getActiveCat(){
+    return (typeof cat !== 'undefined' && cat) ? String(cat) : null;
+  }
+
+  // Obtener productos de la categoria activa desde window.ALL
+  function getCatProducts(c){
+    return (window.ALL||[]).filter(function(p){return p.cat===c;});
   }
 
   function el(t){return document.createElement(t);}
 
-  // Renderiza los grupos de filtros en el contenedor dado
-  function buildHTML(cat){
-    if(!cat||!AIDX[cat])return null;
-    var ref=AIDX[cat], keys=Object.keys(ref);
+  // Construir HTML de filtros para una categoria
+  function buildFilters(c){
+    if(!c||!AIDX[c])return null;
+    var ref=AIDX[c], keys=Object.keys(ref);
     if(!keys.length)return null;
     var wrap=el('div');
     keys.forEach(function(ak){
@@ -1664,15 +1662,15 @@ def _build_nav_patch(products):
       var lbl=el('div');lbl.className='ifx-lbl';
       lbl.textContent=LBL[ak]||ak;sec.appendChild(lbl);
       var row=el('div');row.className='ifx-row';
-      function btn(txt,on,fn){
+      function mkBtn(txt,on,fn){
         var b=el('button');b.className='ifx-btn'+(on?' on':'');
         b.textContent=txt;b.onclick=fn;return b;
       }
-      row.appendChild(btn('Todos',!_sel[ak],(function(k){
+      row.appendChild(mkBtn('Todos',!_sel[ak],(function(k){
         return function(){delete _sel[k];applyFilter();};
       })(ak)));
       vals.forEach(function(v){
-        row.appendChild(btn(v,_sel[ak]===v,(function(k,vv){
+        row.appendChild(mkBtn(v,_sel[ak]===v,(function(k,vv){
           return function(){_sel[k]=vv;applyFilter();};
         })(ak,v)));
       });
@@ -1681,58 +1679,61 @@ def _build_nav_patch(products):
     return wrap;
   }
 
-  // Inyecta nuestros filtros en filterPanelIn
-  // Desconecta el observer para no disparar un bucle
+  // Inyectar filtros en #fpin
   function inject(){
     var fp=document.getElementById('fpin');
     if(!fp)return;
-    // Desconectar observer antes de modificar DOM
-    if(_obs){_obs.disconnect();}
-    var cat=getCat();
-    if(cat!==_curCat){_curCat=cat;_sel={}; _catALL=(window.ALL||[]).slice();}
-    // Quitar bloque anterior
+    if(_obs)_obs.disconnect();
+    var c=getActiveCat();
+    if(c!==_curCat){
+      _curCat=c;
+      _sel={};
+      _catALL=c?getCatProducts(c):null;
+    }
     var old=document.getElementById('ifx-attrs');
-    if(old)old.parentNode.removeChild(old);
-    var html=buildHTML(cat);
+    if(old&&old.parentNode)old.parentNode.removeChild(old);
+    var html=buildFilters(c);
     if(html){
       var cont=el('div');cont.id='ifx-attrs';
       cont.appendChild(html);
       fp.appendChild(cont);
     }
-    // Reconectar observer
     if(_obs)_obs.observe(fp,{childList:true});
   }
 
-  // Aplica filtros de atributos seleccionados sobre _catALL
+  // Aplicar seleccion de atributos
   function applyFilter(){
-    if(!_catALL)return;
-    var sel=_sel, ks=Object.keys(sel);
+    if(!_catALL||!_curCat)return;
+    var sel=_sel,ks=Object.keys(sel);
     _busy=true;
-    window.ALL=ks.length?_catALL.filter(function(p){
+    // Filtrar sobre catALL y actualizar window.ALL manteniendo
+    // los productos de otras categorias intactos
+    var otherProds=(window.ALL||[]).filter(function(p){return p.cat!==_curCat;});
+    var filtered=ks.length?_catALL.filter(function(p){
       if(!p.a)return false;
       for(var i=0;i<ks.length;i++){
         if(sel[ks[i]]&&p.a[ks[i]]!==sel[ks[i]])return false;
       }return true;
     }):_catALL.slice();
+    // Actualizar window.ALL: solo cambia la cat activa
+    window.ALL=otherProds.concat(filtered);
     if(typeof applyAll==='function')applyAll();
     _busy=false;
     inject();
   }
 
-  // Iniciar observador sobre filterPanelIn
   function startObserver(){
     var fp=document.getElementById('fpin');
     if(!fp){setTimeout(startObserver,300);return;}
     _obs=new MutationObserver(function(){
       if(_busy)return;
-      clearTimeout(window.__ifxT);
-      window.__ifxT=setTimeout(inject,180);
+      clearTimeout(window.__ifxM);
+      window.__ifxM=setTimeout(inject,200);
     });
     _obs.observe(fp,{childList:true});
   }
 
-  // Intentar envolver applyAll (funciona si es global accesible)
-  function tryWrap(){
+  function tryWrapApplyAll(){
     if(typeof applyAll!=='function')return;
     var _orig=applyAll;
     try{
@@ -1749,15 +1750,15 @@ def _build_nav_patch(products):
   function init(){
     if(!window.ALL||!window.ALL.length){setTimeout(init,300);return;}
     startObserver();
-    tryWrap();
-    // Polling de seguridad
-    var _lc=null,_ll=0;
+    tryWrapApplyAll();
+    // Polling: detectar cambio de variable global `cat`
+    var _lc=null;
     setInterval(function(){
       if(_busy)return;
-      var a=window.ALL||[], cat=getCat(), l=a.length;
-      if(cat!==_lc||l!==_ll){_lc=cat;_ll=l;inject();}
-    },600);
-    setTimeout(inject,700);
+      var c=getActiveCat();
+      if(c!==_lc){_lc=c;clearTimeout(window.__ifxP);window.__ifxP=setTimeout(inject,100);}
+    },400);
+    setTimeout(inject,800);
   }
 
   if(document.readyState==='loading')
