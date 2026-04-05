@@ -1852,44 +1852,48 @@ def _build_nav_patch(products):
   // Estrategia robusta: cualquier boton con background != blanco/transparente = activo.
   // No depende del color exacto de la tienda.
   function getActiveSub(){
-    var sbEl=document.getElementById('sb');
-    if(!sbEl)return null;
-    // Buscar por color: cualquier fondo no-blanco/no-transparente
-    var btns=sbEl.querySelectorAll('button,a,span');
-    var whites=['rgba(0, 0, 0, 0)','rgb(255, 255, 255)','transparent','rgba(255, 255, 255, 0)'];
-    for(var i=0;i<btns.length;i++){
-      var el=btns[i];
+    var fp=document.getElementById('fpin');
+    if(!fp)return null;
+    var ifx=document.getElementById('ifx-attrs');
+    var all=fp.querySelectorAll('*');
+    // Estrategia 1: fondo naranja en elemento con formato "Nombre (N)"
+    // Los botones de subfamilia tienen texto que termina en (N) con el count
+    for(var i=0;i<all.length;i++){
+      var el=all[i];
+      if(el===ifx)break;
+      if(ifx&&ifx.contains(el))continue;
+      var raw=(el.textContent||'').trim();
+      if(!raw.match(/[(][0-9]+[)]$/))continue;
       var bg=window.getComputedStyle(el).backgroundColor;
-      if(bg&&whites.indexOf(bg)<0&&bg!==''){
-        var t=el.textContent.replace(/[(][0-9]+[)]/g,'').trim();
+      var m=bg.match(/[0-9]+/g);
+      if(m&&m.length>=3&&+m[0]>150&&+m[2]<60){
+        var t=raw.replace(/[ ]*[(][0-9]+[)][ ]*$/,'').trim();
         if(t)return t;
       }
     }
-    // Fallback 1: clase CSS .on / .active / aria
-    var sel='.on,.active,[aria-current],[aria-pressed=true],[aria-selected=true],[data-active=true]';
-    var active=sbEl.querySelector(sel);
-    if(active){
-      var t2=active.textContent.replace(/[(][0-9]+[)]/g,'').trim();
-      if(t2)return t2;
-    }
-    // Fallback 2: texto blanco (sobre fondo naranja) = activo
-    for(var j=0;j<btns.length;j++){
-      var el2=btns[j];
+    // Estrategia 2: texto blanco en elemento con formato "Nombre (N)"
+    for(var j=0;j<all.length;j++){
+      var el2=all[j];
+      if(el2===ifx)break;
+      if(ifx&&ifx.contains(el2))continue;
+      var raw2=(el2.textContent||'').trim();
+      if(!raw2.match(/[(][0-9]+[)]$/))continue;
       var col=window.getComputedStyle(el2).color;
       if(col&&col.indexOf('255, 255, 255')>=0){
-        var t3=el2.textContent.replace(/[(][0-9]+[)]/g,'').trim();
-        if(t3)return t3;
+        var t2=raw2.replace(/[ ]*[(][0-9]+[)][ ]*$/,'').trim();
+        if(t2)return t2;
       }
     }
-    // Fallback 3: texto naranja (borde activo, bg blanco)
-    for(var k=0;k<btns.length;k++){
-      var el3=btns[k];
-      var col2=window.getComputedStyle(el3).color;
-      // Naranja: rgb(245,112,8) o similar - tiene componente roja alta y verde media
-      if(col2&&col2.indexOf('245')>=0&&(col2.indexOf('112')>=0||col2.indexOf('111')>=0)){
-        var t4=el3.textContent.replace(/[(][0-9]+[)]/g,'').trim();
-        if(t4)return t4;
-      }
+    // Estrategia 3: clase CSS .on/.active en elemento con "(N)"
+    var sels='.on,.active,[aria-current],[aria-selected=true]';
+    var cands=fp.querySelectorAll(sels);
+    for(var k=0;k<cands.length;k++){
+      var ca=cands[k];
+      if(ifx&&ifx.contains(ca))continue;
+      var raw3=(ca.textContent||'').trim();
+      if(!raw3.match(/[(][0-9]+[)]$/))continue;
+      var t3=raw3.replace(/[ ]*[(][0-9]+[)][ ]*$/,'').trim();
+      if(t3)return t3;
     }
     return null;
   }
