@@ -1848,34 +1848,57 @@ def _build_nav_patch(products):
     return (typeof cat!=='undefined'&&cat)?String(cat):null;
   }
 
-  // ── Detectar sub activa: leer el boton naranja de #sb ──────────
-  // No usa eventos. Lee el color computado cada vez que inject() es llamado.
+  // ── Detectar sub activa: cualquier boton con fondo no-blanco en #sb ────
+  // Estrategia robusta: cualquier boton con background != blanco/transparente = activo.
+  // No depende del color exacto de la tienda.
   function getActiveSub(){
     var sbEl=document.getElementById('sb');
     if(!sbEl)return null;
-    // La tienda marca el botón activo con fondo naranja rgb(245,112,8)
-    var btns=sbEl.querySelectorAll('button,a,[role=button]');
+    // Buscar por color: cualquier fondo no-blanco/no-transparente
+    var btns=sbEl.querySelectorAll('button,a,span');
+    var whites=['rgba(0, 0, 0, 0)','rgb(255, 255, 255)','transparent','rgba(255, 255, 255, 0)'];
     for(var i=0;i<btns.length;i++){
       var el=btns[i];
       var bg=window.getComputedStyle(el).backgroundColor;
-      // Acepta rgb(245,112,8) y rgba(245,112,8,1) y variaciones menores
-      if(bg&&bg.indexOf('245')>=0&&(bg.indexOf('112')>=0||bg.indexOf('111')>=0||bg.indexOf('113')>=0)){
+      if(bg&&whites.indexOf(bg)<0&&bg!==''){
         var t=el.textContent.replace(/[(][0-9]+[)]/g,'').trim();
         if(t)return t;
       }
     }
-    // Fallback: buscar por clase .on o .active
-    var active=sbEl.querySelector('.on,.active,[aria-current],[aria-pressed=true],[data-active=true]');
+    // Fallback 1: clase CSS .on / .active / aria
+    var sel='.on,.active,[aria-current],[aria-pressed=true],[aria-selected=true],[data-active=true]';
+    var active=sbEl.querySelector(sel);
     if(active){
       var t2=active.textContent.replace(/[(][0-9]+[)]/g,'').trim();
       if(t2)return t2;
+    }
+    // Fallback 2: texto blanco (sobre fondo naranja) = activo
+    for(var j=0;j<btns.length;j++){
+      var el2=btns[j];
+      var col=window.getComputedStyle(el2).color;
+      if(col&&col.indexOf('255, 255, 255')>=0){
+        var t3=el2.textContent.replace(/[(][0-9]+[)]/g,'').trim();
+        if(t3)return t3;
+      }
+    }
+    // Fallback 3: texto naranja (borde activo, bg blanco)
+    for(var k=0;k<btns.length;k++){
+      var el3=btns[k];
+      var col2=window.getComputedStyle(el3).color;
+      // Naranja: rgb(245,112,8) o similar - tiene componente roja alta y verde media
+      if(col2&&col2.indexOf('245')>=0&&(col2.indexOf('112')>=0||col2.indexOf('111')>=0)){
+        var t4=el3.textContent.replace(/[(][0-9]+[)]/g,'').trim();
+        if(t4)return t4;
+      }
     }
     return null;
   }
 
   // ── Obtener índice para cat/sub ────────────────────────────────
   function getRef(c,s){
-    if(s&&(s in SUBIDX)){var r=SUBIDX[s];return(r&&Object.keys(r).length)?r:null;}
+    // Si sub es conocida en SUBIDX (aunque sea vacía): NO hacer fallback a cat
+    if(s&&(s in SUBIDX)){var r=SUBIDX[s];return(r&&Object.keys(r).length)?r:{};}
+    // Sub no conocida: usar catidx como fallback
     if(c&&CATIDX[c])return CATIDX[c];
     return null;
   }
