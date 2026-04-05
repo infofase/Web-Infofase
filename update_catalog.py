@@ -1847,11 +1847,34 @@ def _build_nav_patch(products):
     return (typeof cat!=='undefined'&&cat)?String(cat):null;
   }
 
-  // Sub activa: capturada por listener en #sb (100% fiable, sin depender de clase CSS)
-  var _activeSub=null;
+  // Sub activa: detectada por color CSS (rgb(245,112,8)=naranja) O por click
+  var _activeSub=null;   // null = "leer del DOM en cada inject"
+  var _subFromClick=false; // true = usuario hizo click, usar _activeSub directamente
+
+  function readSubFromDOM(){
+    // Lee el boton activo en #sb comparando backgroundColor (naranja = activo)
+    var sbEl=document.getElementById('sb');
+    if(!sbEl)return null;
+    var all=sbEl.querySelectorAll('*');
+    for(var i=0;i<all.length;i++){
+      var el=all[i];
+      if(!el.textContent)continue;
+      var cs=window.getComputedStyle(el);
+      var bg=cs.backgroundColor;
+      // Naranja de la tienda: rgb(245, 112, 8)
+      if(bg&&bg.indexOf('245')>=0&&bg.indexOf('112')>=0){
+        var t=el.textContent.replace(/[(][0-9]+[)]/g,'').trim();
+        if(t)return t;
+      }
+    }
+    return null;
+  }
+
   function getActiveSub(c){
     if(!c)return null;
-    return _activeSub;
+    if(_subFromClick)return _activeSub;
+    // Leer estado actual del DOM (cubre el caso de carga inicial o recarga)
+    return readSubFromDOM();
   }
 
   function getCatProducts(c){
@@ -1962,20 +1985,22 @@ def _build_nav_patch(products):
   function init(){
     if(!window.ALL||!window.ALL.length){setTimeout(init,300);return;}
     startObserver();tryWrap();
-    // Listener en #sb: capturar subfamilia activa al hacer clic
-    var sbEl=document.getElementById('sb');
-    if(sbEl){
-      sbEl.addEventListener('click',function(e){
-        var btn=e.target;
-        if(!btn||!btn.textContent)return;
-        // El texto del boton es "Nombre sub (N)" — quitar el " (N)"
-        var t=btn.textContent.replace(/[(][0-9]+[)]/,'').trim();
-        if(!t)return;
-        // Si ya estaba activa, toggle a null
-        _activeSub=(_activeSub===t)?null:t;
-        clearTimeout(window.__ifxP);window.__ifxP=setTimeout(inject,80);
-      },true);
-    }
+    // Listener en DOCUMENT para clicks en #sb (sobrevive reconstrucciones del DOM)
+    document.addEventListener('click',function(e){
+      var sbEl=document.getElementById('sb');
+      if(!sbEl||!sbEl.contains(e.target))return;
+      var btn=e.target;
+      if(!btn||!btn.textContent)return;
+      var t=btn.textContent.replace(/[(][0-9]+[)]/g,'').trim();
+      if(!t)return;
+      // Actualizar sub activa
+      _subFromClick=true;
+      // Leer del DOM tras 50ms (la tienda ya actualizó el estilo)
+      setTimeout(function(){
+        _activeSub=readSubFromDOM();
+        inject();
+      },50);
+    },true);
     // Polling para detectar cambio de categoria
     var _lc=null;
     setInterval(function(){
