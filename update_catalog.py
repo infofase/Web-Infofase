@@ -1837,66 +1837,58 @@ def _build_nav_patch(products):
 
     js = """<script>
 (function(){
-  var SUBIDX=""" + SUB_IDX_JSON + """;
-  var CATIDX=""" + CAT_IDX_JSON + """;
-  var LBL=""" + LBL_JSON + """;
-  var ICO=""" + ICONS_JSON + """;
+  var SUBIDX=__SUBIDX__;
+  var CATIDX=__CATIDX__;
+  var LBL=__LBL__;
+  var ICO=__ICO__;
   var _sel={}, _curCat=null, _curSub=null, _catALL=null, _busy=false, _obs=null;
 
+  // ── Detectar cat activa (variable global `cat` de la tienda) ──
   function getActiveCat(){
     return (typeof cat!=='undefined'&&cat)?String(cat):null;
   }
 
-  // Sub activa: detectada por color CSS (rgb(245,112,8)=naranja) O por click
-  var _activeSub=null;   // null = "leer del DOM en cada inject"
-  var _subFromClick=false; // true = usuario hizo click, usar _activeSub directamente
-
-  function readSubFromDOM(){
-    // Lee el boton activo en #sb comparando backgroundColor (naranja = activo)
+  // ── Detectar sub activa: leer el boton naranja de #sb ──────────
+  // No usa eventos. Lee el color computado cada vez que inject() es llamado.
+  function getActiveSub(){
     var sbEl=document.getElementById('sb');
     if(!sbEl)return null;
-    var all=sbEl.querySelectorAll('*');
-    for(var i=0;i<all.length;i++){
-      var el=all[i];
-      if(!el.textContent)continue;
-      var cs=window.getComputedStyle(el);
-      var bg=cs.backgroundColor;
-      // Naranja de la tienda: rgb(245, 112, 8)
-      if(bg&&bg.indexOf('245')>=0&&bg.indexOf('112')>=0){
+    // La tienda marca el botón activo con fondo naranja rgb(245,112,8)
+    var btns=sbEl.querySelectorAll('button,a,[role=button]');
+    for(var i=0;i<btns.length;i++){
+      var el=btns[i];
+      var bg=window.getComputedStyle(el).backgroundColor;
+      // Acepta rgb(245,112,8) y rgba(245,112,8,1) y variaciones menores
+      if(bg&&bg.indexOf('245')>=0&&(bg.indexOf('112')>=0||bg.indexOf('111')>=0||bg.indexOf('113')>=0)){
         var t=el.textContent.replace(/[(][0-9]+[)]/g,'').trim();
         if(t)return t;
       }
     }
+    // Fallback: buscar por clase .on o .active
+    var active=sbEl.querySelector('.on,.active,[aria-current],[aria-pressed=true],[data-active=true]');
+    if(active){
+      var t2=active.textContent.replace(/[(][0-9]+[)]/g,'').trim();
+      if(t2)return t2;
+    }
     return null;
   }
 
-  function getActiveSub(c){
-    if(!c)return null;
-    if(_subFromClick)return _activeSub;
-    // Leer estado actual del DOM (cubre el caso de carga inicial o recarga)
-    return readSubFromDOM();
-  }
-
-  function getCatProducts(c){
-    return (window.ALL||[]).filter(function(p){return p.cat===c;});
-  }
-
+  // ── Obtener índice para cat/sub ────────────────────────────────
   function getRef(c,s){
-    // If sub is known but empty attrs → show nothing (not fall back to cat)
-    if(s&&(s in SUBIDX))return SUBIDX[s]||null;
-    // Unknown sub → fall back to cat
+    if(s&&(s in SUBIDX)){var r=SUBIDX[s];return(r&&Object.keys(r).length)?r:null;}
     if(c&&CATIDX[c])return CATIDX[c];
     return null;
   }
 
+  function getCatProds(c){return(window.ALL||[]).filter(function(p){return p.cat===c;});}
   function el(t){return document.createElement(t);}
 
+  // ── Construir HTML de filtros ──────────────────────────────────
   function buildFilters(c,s){
     var ref=getRef(c,s);
     if(!ref)return null;
-    var keys=Object.keys(ref);
-    if(!keys.length)return null;
-    var sep=el('div');sep.id='ifx-sep';
+    var keys=Object.keys(ref);if(!keys.length)return null;
+    var sep=el('div');sep.id='ifx-sep';sep.style.cssText='height:1px;background:var(--bdr,rgba(0,0,0,.07));margin:8px 0 6px';
     var wrap=el('div');wrap.className='ifx-wrap';
     keys.forEach(function(ak){
       var vals=ref[ak];if(!vals||!vals.length)return;
@@ -1906,21 +1898,17 @@ def _build_nav_patch(products):
       lbl.innerHTML=(ICO[ak]?'<span>'+ICO[ak]+'</span> ':'')+' '+(LBL[ak]||ak);
       sec.appendChild(lbl);
       var row=el('div');row.className='ifx-row';
-      var bt=el('button');
-      bt.className='ifx-btn'+((!sel||!sel.size)?' on':'');
-      bt.textContent='Todos';
-      bt.onclick=(function(k){return function(){_sel[k]=new Set();applyFilter();};})(ak);
-      row.appendChild(bt);
+      function mkBtn(txt,on,fn){
+        var b=el('button');b.className='ifx-btn'+(on?' on':'');
+        b.textContent=txt;b.onclick=fn;return b;
+      }
+      row.appendChild(mkBtn('Todos',!sel||!sel.size,(function(k){return function(){_sel[k]=new Set();applyFilter();};})(ak)));
       vals.forEach(function(v){
-        var on=sel&&sel.has(v);
-        var btn=el('button');btn.className='ifx-btn'+(on?' on':'');
-        btn.textContent=v;
-        btn.onclick=(function(k,vv){return function(){
+        row.appendChild(mkBtn(v,sel&&sel.has(v),(function(k,vv){return function(){
           if(!_sel[k])_sel[k]=new Set();
           if(_sel[k].has(vv))_sel[k].delete(vv);else _sel[k].add(vv);
           applyFilter();
-        };})(ak,v);
-        row.appendChild(btn);
+        };})(ak,v)));
       });
       sec.appendChild(row);wrap.appendChild(sec);
     });
@@ -1928,15 +1916,16 @@ def _build_nav_patch(products):
     return cont;
   }
 
+  // ── Inyectar filtros en #fpin ──────────────────────────────────
   function inject(){
     var fp=document.getElementById('fpin');if(!fp)return;
     if(_obs)_obs.disconnect();
     var c=getActiveCat();
-    var s=getActiveSub(c);
-    // Reset sel si cambia cat o sub
+    var s=getActiveSub();
+    // Reset sel cuando cambia cat o sub
     if(c!==_curCat||s!==_curSub){
       _curCat=c;_curSub=s;_sel={};
-      _catALL=c?getCatProducts(c):null;
+      _catALL=c?getCatProds(c):null;
     }
     var old=document.getElementById('ifx-attrs');
     if(old&&old.parentNode)old.parentNode.removeChild(old);
@@ -1945,76 +1934,65 @@ def _build_nav_patch(products):
     if(_obs)_obs.observe(fp,{childList:true});
   }
 
+  // ── Aplicar filtros de atributos ───────────────────────────────
   function applyFilter(){
     if(!_catALL||!_curCat)return;
     _busy=true;
-    var otherProds=(window.ALL||[]).filter(function(p){return p.cat!==_curCat;});
     var base=_curSub?_catALL.filter(function(p){return p.s===_curSub;}):_catALL;
-    var filtered=base.filter(function(p){
+    var other=(window.ALL||[]).filter(function(p){return p.cat!==_curCat;});
+    window.ALL=other.concat(base.filter(function(p){
       return Object.keys(_sel).every(function(k){
         if(!_sel[k]||!_sel[k].size)return true;
         return p.a&&_sel[k].has(p.a[k]);
       });
-    });
-    window.ALL=otherProds.concat(filtered);
+    }));
     if(typeof applyAll==='function')applyAll();
     _busy=false;
     inject();
   }
 
-  function startObserver(){
-    var fp=document.getElementById('fpin');
-    if(!fp){setTimeout(startObserver,300);return;}
+  // ── MutationObserver en #fpin ──────────────────────────────────
+  function startObs(){
+    var fp=document.getElementById('fpin');if(!fp){setTimeout(startObs,300);return;}
     _obs=new MutationObserver(function(){
       if(_busy)return;
-      clearTimeout(window.__ifxM);
-      window.__ifxM=setTimeout(inject,200);
+      clearTimeout(window.__ifxM);window.__ifxM=setTimeout(inject,220);
     });
     _obs.observe(fp,{childList:true});
   }
 
+  // ── Envolver applyAll si es posible ───────────────────────────
   function tryWrap(){
     if(typeof applyAll!=='function')return;
     var _orig=applyAll;
-    try{applyAll=function(){
-      _orig.apply(this,arguments);
-      if(!_busy){clearTimeout(window.__ifxW);window.__ifxW=setTimeout(inject,80);}
-    };}catch(e){}
+    try{applyAll=function(){_orig.apply(this,arguments);if(!_busy){clearTimeout(window.__ifxW);window.__ifxW=setTimeout(inject,90);}};}catch(e){}
+  }
+
+  // ── Polling principal ──────────────────────────────────────────
+  // Detecta cambios de cat Y sub, sin depender de eventos
+  function startPoll(){
+    var lc=null,ls=null;
+    setInterval(function(){
+      if(_busy)return;
+      var c=getActiveCat(),s=getActiveSub();
+      if(c!==lc||s!==ls){lc=c;ls=s;clearTimeout(window.__ifxP);window.__ifxP=setTimeout(inject,120);}
+    },400);
   }
 
   function init(){
     if(!window.ALL||!window.ALL.length){setTimeout(init,300);return;}
-    startObserver();tryWrap();
-    // Listener en DOCUMENT para clicks en #sb (sobrevive reconstrucciones del DOM)
-    document.addEventListener('click',function(e){
-      var sbEl=document.getElementById('sb');
-      if(!sbEl||!sbEl.contains(e.target))return;
-      var btn=e.target;
-      if(!btn||!btn.textContent)return;
-      var t=btn.textContent.replace(/[(][0-9]+[)]/g,'').trim();
-      if(!t)return;
-      // Actualizar sub activa
-      _subFromClick=true;
-      // Leer del DOM tras 50ms (la tienda ya actualizó el estilo)
-      setTimeout(function(){
-        _activeSub=readSubFromDOM();
-        inject();
-      },50);
-    },true);
-    // Polling para detectar cambio de categoria
-    var _lc=null;
-    setInterval(function(){
-      if(_busy)return;
-      var c=getActiveCat();
-      if(c!==_lc){_lc=c;_activeSub=null;clearTimeout(window.__ifxP);window.__ifxP=setTimeout(inject,100);}
-    },400);
-    setTimeout(inject,800);
+    startObs();tryWrap();startPoll();
+    setTimeout(inject,900);
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
   else init();
 })();
 </script>"""
+    js = js.replace('__SUBIDX__', SUB_IDX_JSON)
+    js = js.replace('__CATIDX__', CAT_IDX_JSON)
+    js = js.replace('__LBL__', LBL_JSON)
+    js = js.replace('__ICO__', ICONS_JSON)
 
     return css + js
 
