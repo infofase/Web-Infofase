@@ -1841,7 +1841,7 @@ def _build_nav_patch(products):
   var CATIDX=__CATIDX__;
   var LBL=__LBL__;
   var ICO=__ICO__;
-  var _sel={}, _curCat=null, _curSub=null, _catALL=null, _busy=false, _obs=null;
+  var _sel={}, _curCat=null, _curSub=null, _catALL=null, _busy=false, _obs=null, _passIds=null;
 
   // ── Detectar cat activa (variable global `cat` de la tienda) ──
   function getActiveCat(){
@@ -1943,6 +1943,29 @@ def _build_nav_patch(products):
     return cont;
   }
 
+  function tagGridCards(){
+    var grid=document.getElementById('grid');if(!grid)return;
+    var prods=(window.ALL||[]).filter(function(p){return p.cat===_curCat&&(!_curSub||p.s===_curSub);});
+    var cards=grid.children;
+    for(var i=0;i<cards.length;i++){if(i<prods.length)cards[i].setAttribute('data-ifx-pid',prods[i].id||String(i));}
+  }
+  function applyGridFilter(){
+    var grid=document.getElementById('grid');if(!grid)return;
+    var cards=grid.children;
+    for(var i=0;i<cards.length;i++){
+      var pid=cards[i].getAttribute('data-ifx-pid');
+      cards[i].style.display=(!_passIds||_passIds.has(pid))?'':'none';
+    }
+  }
+  function updateCount(){
+    var shownEl=document.getElementById('shown');if(!shownEl)return;
+    if(!_passIds){shownEl.textContent=shownEl.getAttribute('data-ifx-orig')||shownEl.textContent;return;}
+    if(!shownEl.getAttribute('data-ifx-orig'))shownEl.setAttribute('data-ifx-orig',shownEl.textContent);
+    var grid=document.getElementById('grid');if(!grid)return;
+    var vis=0,cards=grid.children;
+    for(var i=0;i<cards.length;i++){if(cards[i].style.display!=='none')vis++;}
+    shownEl.textContent=vis;
+  }
   // ── Inyectar filtros en #fpin ──────────────────────────────────
   function inject(){
     var fp=document.getElementById('fpin');if(!fp)return;
@@ -1951,9 +1974,12 @@ def _build_nav_patch(products):
     var s=getActiveSub();
     // Reset sel cuando cambia cat o sub
     if(c!==_curCat||s!==_curSub){
-      _curCat=c;_curSub=s;_sel={};
+      _curCat=c;_curSub=s;_sel={};_passIds=null;
       _catALL=c?getCatProds(c):null;
+      applyGridFilter();
     }
+    tagGridCards();
+    applyGridFilter();
     var old=document.getElementById('ifx-attrs');
     if(old&&old.parentNode)old.parentNode.removeChild(old);
     var html=buildFilters(c,s);
@@ -1964,17 +1990,19 @@ def _build_nav_patch(products):
   // ── Aplicar filtros de atributos ───────────────────────────────
   function applyFilter(){
     if(!_catALL||!_curCat)return;
-    _busy=true;
+    var ks=Object.keys(_sel).filter(function(k){return _sel[k]&&_sel[k].size;});
     var base=_curSub?_catALL.filter(function(p){return p.s===_curSub;}):_catALL;
-    var other=(window.ALL||[]).filter(function(p){return p.cat!==_curCat;});
-    window.ALL=other.concat(base.filter(function(p){
-      return Object.keys(_sel).every(function(k){
-        if(!_sel[k]||!_sel[k].size)return true;
-        return p.a&&_sel[k].has(p.a[k]);
+    if(ks.length){
+      var pass=base.filter(function(p){
+        if(!p.a)return false;
+        return ks.every(function(k){return _sel[k].has(p.a[k]);});
       });
-    }));
-    if(typeof applyAll==='function')applyAll();
-    _busy=false;
+      _passIds=new Set(pass.map(function(p){return p.id;}));
+    }else{
+      _passIds=null;
+    }
+    applyGridFilter();
+    updateCount();
     inject();
   }
 
@@ -1983,7 +2011,7 @@ def _build_nav_patch(products):
     var fp=document.getElementById('fpin');if(!fp){setTimeout(startObs,300);return;}
     _obs=new MutationObserver(function(){
       if(_busy)return;
-      clearTimeout(window.__ifxM);window.__ifxM=setTimeout(inject,220);
+      clearTimeout(window.__ifxM);window.__ifxM=setTimeout(function(){tagGridCards();applyGridFilter();inject();},220);
     });
     _obs.observe(fp,{childList:true});
   }
@@ -1992,7 +2020,7 @@ def _build_nav_patch(products):
   function tryWrap(){
     if(typeof applyAll!=='function')return;
     var _orig=applyAll;
-    try{applyAll=function(){_orig.apply(this,arguments);if(!_busy){clearTimeout(window.__ifxW);window.__ifxW=setTimeout(inject,90);}};}catch(e){}
+    try{applyAll=function(){_orig.apply(this,arguments);if(!_busy){clearTimeout(window.__ifxW);window.__ifxW=setTimeout(function(){tagGridCards();applyGridFilter();inject();},90);}};}catch(e){}
   }
 
   // ── Polling principal ──────────────────────────────────────────
@@ -2002,7 +2030,7 @@ def _build_nav_patch(products):
     setInterval(function(){
       if(_busy)return;
       var c=getActiveCat(),s=getActiveSub();
-      if(c!==lc||s!==ls){lc=c;ls=s;clearTimeout(window.__ifxP);window.__ifxP=setTimeout(inject,120);}
+      if(c!==lc||s!==ls){lc=c;ls=s;clearTimeout(window.__ifxP);window.__ifxP=setTimeout(function(){tagGridCards();applyGridFilter();inject();},120);}
     },400);
   }
 
