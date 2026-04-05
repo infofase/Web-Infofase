@@ -1559,74 +1559,235 @@ def ascii_encode(html_str):
 
 # ── Navegación jerárquica por familias ────────────────────────
 def _build_nav_patch(products):
-    """Filtros de atributos v3:
-    - Attrs especificos por categoria (no genérico)
-    - Multi-seleccion por atributo (OR dentro del atributo, AND entre atributos)
-    - Iconos en etiquetas
-    - Layout compacto horizontal
+    """Filtros de atributos v4 — por subfamilia (p.s).
+    Detecta la subfamilia activa y muestra solo atributos relevantes para ella.
+    Multi-selección OR por atributo. Layout compacto con iconos.
     """
     import json as _j
 
-    # Atributos permitidos por categoria (solo los relevantes)
-    CAT_ATTRS = {
-        "portatiles":   ["pantalla","procesador","ram","almacenamiento","tipo_disco","sistema_op","grafica"],
-        "ordenadores":  ["procesador","ram","almacenamiento","tipo_disco","sistema_op"],
-        "monitores":    ["pantalla","panel","resolucion","refresco"],
-        "componentes":  ["tipo_ram","capacidad_ram","velocidad_ram","formato_ram","almacenamiento","tipo_disco","procesador"],
-        "impresoras":   ["tipo_imp","color_imp","formato_papel","wifi_imp"],
-        "escaneres":    ["tipo_imp"],
-        "cables":       ["tipo_cable","longitud"],
-        "cable_red":    ["tipo_cable","longitud","categoria_red"],
-        "redes":        ["puertos","velocidad_red","poe","gestionable"],
-        "tablets":      ["pantalla","ram","almacenamiento","conectividad"],
-        "smartphones":  ["pantalla","ram","almacenamiento","conectividad"],
-        "audio":        ["tipo_conexion","conectividad"],
-        "perifericos":  ["conectividad","capacidad","usb_ver"],
-        "sai_ups":      ["potencia_va"],
-        "tpv":          ["tipo_imp","pantalla"],
-        "disco_externo":["almacenamiento","tipo_disco"],
-        "nas":          ["almacenamiento","tipo_disco"],
-        "wearables":    ["conectividad"],
-        "camaras":      ["resolucion"],
-        "fundas":       ["pantalla"],
-        "powerbank":    ["capacidad"],
-        "gaming":       ["conectividad"],
-        "consumibles":  [],
-        "software":     [],
+    # ── Atributos permitidos por SUBFAMILIA (p.s) ─────────────────
+    # Primero subfamilia específica; si no hay match, usar categoría
+    SUB_ATTRS = {
+        # COMPONENTES
+        "Memorias RAM":        ["tipo_ram","capacidad_ram","velocidad_ram","formato_ram"],
+        "SSD M.2":             ["almacenamiento","tipo_disco"],
+        "SSD SATA":            ["almacenamiento","tipo_disco"],
+        "HDD 3.5\"":           ["almacenamiento","tipo_disco"],
+        "HDD 2.5\"":           ["almacenamiento","tipo_disco"],
+        "HDD Servidor":        ["almacenamiento","tipo_disco"],
+        "Discos internos":     ["almacenamiento","tipo_disco"],
+        "Procesadores":        ["procesador"],
+        "Placas base":         [],
+        "Tarjetas gráficas":   [],
+        "Carcasas PC":         [],
+        "Carcasas servidor":   [],
+        "Fuentes alimentación":["tipo_disco"],
+        "Refrigeración":       [],
+        "Controladoras":       [],
+        "Unidades ópticas":    [],
+        "Tarjetas de sonido":  [],
+        "Rack":                [],
+        # MONITORES
+        "Monitores":           ["pantalla","panel","resolucion","refresco"],
+        "Televisores":         ["pantalla","resolucion","panel"],
+        "Proyectores":         ["resolucion"],
+        "Soportes y brazos":   [],
+        "Pantallas proyección": [],
+        "Lámparas proyector":  [],
+        "Marcos digitales":    [],
+        # PORTÁTILES
+        "Portátiles":          ["pantalla","procesador","ram","almacenamiento","sistema_op","grafica"],
+        "Cargadores portátil": [],
+        "Soportes portátil":   [],
+        "Accesorios portátil": [],
+        # IMPRESORAS
+        "Multifunción tinta":  ["formato_papel","wifi_imp"],
+        "Multifunción láser BN":["formato_papel","wifi_imp"],
+        "Multifunción láser color":["formato_papel","wifi_imp"],
+        "Inyección de tinta":  ["formato_papel","wifi_imp"],
+        "Láser monocromo":     ["formato_papel","wifi_imp"],
+        "Láser color":         ["formato_papel","wifi_imp"],
+        "Láser":               ["formato_papel"],
+        "Etiquetas":           [],
+        "Plotter":             ["formato_papel"],
+        "Rotuladoras":         [],
+        "Matriciales":         [],
+        # REDES
+        "Switch Gigabit":      ["puertos","poe"],
+        "Switch 10G":          ["puertos","poe"],
+        "Switch Fast":         ["puertos"],
+        "Switches":            ["puertos","poe","velocidad_red"],
+        "Routers":             [],
+        "Puntos de acceso":    [],
+        "WiFi":                [],
+        "Tarjetas WiFi":       ["conectividad"],
+        "Powerline":           ["velocidad_red"],
+        "Armarios rack":       [],
+        "Cajas rack":          [],
+        "Cámaras IP WiFi":     [],
+        "Cámaras IP LAN":      [],
+        "Cámaras IP":          [],
+        "CCTV":                [],
+        # PERIFÉRICOS
+        "Ratones":             ["conectividad"],
+        "Ratones gaming":      ["conectividad"],
+        "Ratones portátil":    ["conectividad"],
+        "Teclados":            ["conectividad"],
+        "Teclados gaming":     ["conectividad"],
+        "Teclado + ratón":     ["conectividad"],
+        "Pendrives":           ["capacidad","usb_ver"],
+        "MicroSD":             ["capacidad"],
+        "Tarjetas SD":         ["capacidad"],
+        "Memoria flash":       ["capacidad"],
+        "Lectores tarjeta":    [],
+        "Webcams":             ["resolucion"],
+        "Hubs USB":            [],
+        "Adaptadores USB":     [],
+        "Accesorios streaming":["conectividad"],
+        "Docks y KVM":         [],
+        "Presentadores":       ["conectividad"],
+        # AUDIO
+        "Auriculares":         ["tipo_conexion"],
+        "Altavoces":           ["conectividad"],
+        "Sonido":              ["tipo_conexion"],
+        "Barras de sonido":    ["conectividad"],
+        "Media Players":       [],
+        "Capturadoras":        [],
+        # TABLETS
+        "Tablets Android":     ["pantalla","ram","almacenamiento","conectividad"],
+        "Tablets":             ["pantalla","ram","almacenamiento","conectividad"],
+        "iPad":                ["pantalla","ram","almacenamiento"],
+        "eBooks":              [],
+        "Accesorios tablet":   [],
+        # SMARTPHONES
+        "Smartphones":         ["pantalla","ram","almacenamiento","conectividad"],
+        # SAI/UPS
+        "SAI / UPS":           ["potencia_va"],
+        "Regletas":            [],
+        # DISCOS EXTERNOS
+        "HDD externo":         ["almacenamiento"],
+        "SSD externo":         ["almacenamiento"],
+        "Cajas 2.5\"":         [],
+        "Cajas 3.5\"":         [],
+        "Cajas SSD":           [],
+        "Discos externos":     ["almacenamiento"],
+        # CABLES
+        "Vídeo":               ["tipo_cable","longitud"],
+        "Datos":               ["tipo_cable","longitud"],
+        "Alimentación":        ["longitud"],
+        "TV / RF":             ["longitud"],
+        # CABLES RED
+        "Latiguillos":         ["longitud","categoria_red"],
+        "Cables red":          ["longitud","categoria_red"],
+        "Conectores":          [],
+        # NAS
+        "Cajas NAS":           [],
+        "NAS":                 ["almacenamiento","tipo_disco"],
+        # TPV
+        "Impresoras TPV":      [],
+        "Lectores código barras":[],
+        "Terminales TPV":      [],
+        "Monitores TPV":       ["pantalla"],
+        # FUNDAS
+        "Fundas portátil":     ["pantalla"],
+        "Fundas tablet":       ["pantalla"],
+        "Fundas móvil":        [],
+        "Mochilas":            [],
+        "Maletines":           [],
+        # ORDENADORES
+        "Torre sobremesa":     ["procesador","ram","almacenamiento","tipo_disco","sistema_op"],
+        "All-in-One":          ["procesador","ram","almacenamiento","sistema_op","pantalla"],
+        "Mini PC":             ["procesador","ram","almacenamiento","tipo_disco","sistema_op"],
+        "Sobremesa":           ["procesador","ram","almacenamiento","tipo_disco","sistema_op"],
+        "Barebone":            ["procesador","ram"],
+        "Servidores":          ["procesador","ram","almacenamiento"],
+        # WEARABLES
+        "Smartwatch":          ["conectividad"],
+        "Smartband":           ["conectividad"],
+        # SOFTWARE
+        "Antivirus":           [],
+        "Office":              [],
+        "Windows 11":          [],
+        "Windows Server":      [],
     }
 
-    # Construir AIDX solo con attrs relevantes para cada cat
-    raw = {}
-    for p in products:
-        c = p.get("cat")
-        allowed = CAT_ATTRS.get(c, [])
-        if not c or not p.get("a") or not allowed: continue
-        if c not in raw: raw[c] = {}
-        for k, v in p["a"].items():
-            if k not in allowed: continue
-            if not v or k == "color": continue
-            v = str(v).replace('"','').replace("'",'').replace('\\','')
-            if k not in raw[c]: raw[c][k] = set()
-            raw[c][k].add(v)
+    # Fallback por categoría cuando no hay subfamilia específica
+    CAT_ATTRS_FALLBACK = {
+        "portatiles":    ["pantalla","procesador","ram","almacenamiento","sistema_op","grafica"],
+        "ordenadores":   ["procesador","ram","almacenamiento","tipo_disco","sistema_op"],
+        "monitores":     ["pantalla","panel","resolucion","refresco"],
+        "componentes":   ["almacenamiento","tipo_disco","procesador","tipo_ram","capacidad_ram"],
+        "impresoras":    ["tipo_imp","color_imp","formato_papel","wifi_imp"],
+        "escaneres":     [],
+        "cables":        ["tipo_cable","longitud"],
+        "cable_red":     ["longitud","categoria_red"],
+        "redes":         ["puertos","velocidad_red","poe"],
+        "tablets":       ["pantalla","ram","almacenamiento","conectividad"],
+        "smartphones":   ["pantalla","ram","almacenamiento","conectividad"],
+        "audio":         ["tipo_conexion","conectividad"],
+        "perifericos":   ["conectividad","capacidad","usb_ver"],
+        "sai_ups":       ["potencia_va"],
+        "tpv":           ["tipo_imp","pantalla"],
+        "disco_externo": ["almacenamiento"],
+        "nas":           ["almacenamiento"],
+        "wearables":     ["conectividad"],
+        "camaras":       ["resolucion"],
+        "fundas":        ["pantalla"],
+        "powerbank":     ["capacidad"],
+        "gaming":        ["conectividad"],
+        "consumibles":   [],
+        "software":      [],
+    }
 
-    aidx = {}
-    for cat, attrs in raw.items():
-        allowed = CAT_ATTRS.get(cat, [])
-        co = {}
-        for k in allowed:  # mantener orden de CAT_ATTRS
-            if k not in attrs: continue
-            vals = [v for v in attrs[k] if v]
+    # Construir AIDX por subfamilia Y por categoría
+    def build_aidx_for(prods, allowed_keys):
+        raw = {}
+        for p in prods:
+            if not p.get("a"): continue
+            for k, v in p["a"].items():
+                if k not in allowed_keys: continue
+                if not v or k == "color": continue
+                v = str(v).replace('"','').replace("'",'').replace('\\\\','')
+                if k not in raw: raw[k] = set()
+                raw[k].add(v)
+        result = {}
+        for k in allowed_keys:
+            if k not in raw: continue
+            vals = [v for v in raw[k] if v]
             if len(vals) < 2: continue
             def sk(x):
                 try:
                     n = float("".join(c for c in x if c.isdigit() or c==".") or "999")
                     return (0,n) if x and x[0].isdigit() else (1,x)
                 except: return (1,x)
-            co[k] = sorted(vals, key=sk)
-        if co: aidx[cat] = co
+            result[k] = sorted(vals, key=sk)
+        return result
 
-    AIDX_JSON = _j.dumps(aidx, ensure_ascii=True, separators=(",",":"))
-    CAT_ATTRS_JSON = _j.dumps(CAT_ATTRS, ensure_ascii=True, separators=(",",":"))
+    # Índice por subfamilia — incluye subs con [] para que JS sepa no hacer fallback
+    sub_idx = {}
+    for sub, allowed in SUB_ATTRS.items():
+        if not allowed:
+            # Sub conocida sin attrs: añadir entrada vacía para que JS no haga fallback
+            sub_idx[sub] = {}
+            continue
+        prods_sub = [p for p in products if p.get("s") == sub]
+        if not prods_sub:
+            sub_idx[sub] = {}  # sub conocida, sin productos: también vacía
+            continue
+        idx = build_aidx_for(prods_sub, allowed)
+        sub_idx[sub] = idx  # puede ser vacío si no hay >=2 valores
+
+    # Índice por categoría (fallback)
+    cat_idx = {}
+    for cat, allowed in CAT_ATTRS_FALLBACK.items():
+        if not allowed: continue
+        prods_cat = [p for p in products if p.get("cat") == cat]
+        if not prods_cat: continue
+        idx = build_aidx_for(prods_cat, allowed)
+        if idx: cat_idx[cat] = idx
+
+    SUB_IDX_JSON = _j.dumps(sub_idx, ensure_ascii=True, separators=(",",":"))
+    CAT_IDX_JSON = _j.dumps(cat_idx, ensure_ascii=True, separators=(",",":"))
 
     lbl = {
         "pantalla":"Pantalla","procesador":"Procesador","ram":"RAM",
@@ -1657,8 +1818,8 @@ def _build_nav_patch(products):
     css = (
         "<style>"
         "#ifx-attrs{margin-top:4px}"
-        ".ifx-wrap{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:flex-start}"
-        ".ifx-section{min-width:160px;max-width:280px;flex:1 1 160px}"
+        ".ifx-wrap{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:flex-start}"
+        ".ifx-section{min-width:140px;max-width:260px;flex:1 1 140px}"
         ".ifx-lbl{font-size:9px;font-weight:700;color:var(--ink4,#9b9b9b);"
         "text-transform:uppercase;letter-spacing:.06em;"
         "display:flex;align-items:center;gap:3px;margin:0 0 4px}"
@@ -1670,42 +1831,64 @@ def _build_nav_patch(products):
         ".ifx-btn:hover{border-color:var(--or,#F57008);color:var(--or,#F57008)}"
         ".ifx-btn.on{background:var(--or,#F57008);color:#fff;"
         "border-color:var(--or,#F57008)}"
-        "#ifx-sep{height:1px;background:var(--bdr,rgba(0,0,0,.07));"
-        "margin:8px 0 6px}"
+        "#ifx-sep{height:1px;background:var(--bdr,rgba(0,0,0,.07));margin:8px 0 6px}"
         "</style>"
     )
 
     js = """<script>
 (function(){
-  var AIDX=""" + AIDX_JSON + """;
+  var SUBIDX=""" + SUB_IDX_JSON + """;
+  var CATIDX=""" + CAT_IDX_JSON + """;
   var LBL=""" + LBL_JSON + """;
   var ICO=""" + ICONS_JSON + """;
-  // _sel[k] = Set of selected values (multi-select per attr)
-  var _sel={}, _curCat=null, _catALL=null, _busy=false, _obs=null;
+  var _sel={}, _curCat=null, _curSub=null, _catALL=null, _busy=false, _obs=null;
 
   function getActiveCat(){
     return (typeof cat!=='undefined'&&cat)?String(cat):null;
   }
+
+  // Detectar subfamilia activa: si todos los productos de la cat activa
+  // en window.ALL comparten el mismo p.s, esa es la subfamilia activa.
+  // Tambien intentar leer variable global 'sub' si existe.
+  function getActiveSub(c){
+    if(!c)return null;
+    // Intentar variable global sub/curSub/subcat
+    if(typeof sub!=='undefined'&&sub)return String(sub);
+    // Leer del DOM: boton de subfamilia activo en #sb (tienda usa #sb para subfamilias)
+    var sbEl=document.getElementById('sb');
+    if(sbEl){
+      var active=sbEl.querySelector('.on,.active,[aria-pressed=true]');
+      if(active){var t=(active.textContent||'').replace(/[(][0-9]+[)]/,'').trim();if(t)return t;}
+    }
+    // Detectar por productos visibles en grid
+    var cards=document.querySelectorAll('#grid .p-sub,.sub,.category-label,.cat-label');
+    if(cards.length>0){
+      var subs={};
+      cards.forEach(function(el){var t=(el.textContent||'').trim();if(t)subs[t]=(subs[t]||0)+1;});
+      var keys=Object.keys(subs);
+      if(keys.length===1)return keys[0];
+    }
+    return null;
+  }
+
   function getCatProducts(c){
     return (window.ALL||[]).filter(function(p){return p.cat===c;});
   }
-  function el(t){return document.createElement(t);}
 
-  // Contar productos que coinciden con seleccion completa excepto un atributo
-  function countMatch(prods, skipKey){
-    return prods.filter(function(p){
-      if(!p.a)return Object.keys(_sel).every(function(k){return k===skipKey||!_sel[k]||!_sel[k].size;});
-      return Object.keys(_sel).every(function(k){
-        if(k===skipKey)return true;
-        if(!_sel[k]||!_sel[k].size)return true;
-        return _sel[k].has(p.a[k]);
-      });
-    }).length;
+  function getRef(c,s){
+    // If sub is known but empty attrs → show nothing (not fall back to cat)
+    if(s&&(s in SUBIDX))return SUBIDX[s]||null;
+    // Unknown sub → fall back to cat
+    if(c&&CATIDX[c])return CATIDX[c];
+    return null;
   }
 
-  function buildFilters(c){
-    if(!c||!AIDX[c])return null;
-    var ref=AIDX[c],keys=Object.keys(ref);
+  function el(t){return document.createElement(t);}
+
+  function buildFilters(c,s){
+    var ref=getRef(c,s);
+    if(!ref)return null;
+    var keys=Object.keys(ref);
     if(!keys.length)return null;
     var sep=el('div');sep.id='ifx-sep';
     var wrap=el('div');wrap.className='ifx-wrap';
@@ -1714,46 +1897,44 @@ def _build_nav_patch(products):
       var sel=_sel[ak]||new Set();
       var sec=el('div');sec.className='ifx-section';
       var lbl=el('div');lbl.className='ifx-lbl';
-      lbl.innerHTML=(ICO[ak]?'<span>'+ICO[ak]+'</span>':'')+' '+(LBL[ak]||ak);
+      lbl.innerHTML=(ICO[ak]?'<span>'+ICO[ak]+'</span> ':'')+' '+(LBL[ak]||ak);
       sec.appendChild(lbl);
       var row=el('div');row.className='ifx-row';
-      // Todos btn
       var bt=el('button');
       bt.className='ifx-btn'+((!sel||!sel.size)?' on':'');
       bt.textContent='Todos';
-      bt.onclick=(function(k){return function(){
-        _sel[k]=new Set();applyFilter();
-      };})(ak);
+      bt.onclick=(function(k){return function(){_sel[k]=new Set();applyFilter();};})(ak);
       row.appendChild(bt);
       vals.forEach(function(v){
         var on=sel&&sel.has(v);
-        var btn=el('button');
-        btn.className='ifx-btn'+(on?' on':'');
+        var btn=el('button');btn.className='ifx-btn'+(on?' on':'');
         btn.textContent=v;
         btn.onclick=(function(k,vv){return function(){
           if(!_sel[k])_sel[k]=new Set();
-          if(_sel[k].has(vv))_sel[k].delete(vv);
-          else _sel[k].add(vv);
+          if(_sel[k].has(vv))_sel[k].delete(vv);else _sel[k].add(vv);
           applyFilter();
         };})(ak,v);
         row.appendChild(btn);
       });
       sec.appendChild(row);wrap.appendChild(sec);
     });
-    var cont=el('div');
-    cont.appendChild(sep);cont.appendChild(wrap);
+    var cont=el('div');cont.appendChild(sep);cont.appendChild(wrap);
     return cont;
   }
 
   function inject(){
-    var fp=document.getElementById('fpin');
-    if(!fp)return;
+    var fp=document.getElementById('fpin');if(!fp)return;
     if(_obs)_obs.disconnect();
     var c=getActiveCat();
-    if(c!==_curCat){_curCat=c;_sel={};_catALL=c?getCatProducts(c):null;}
+    var s=getActiveSub(c);
+    // Reset sel si cambia cat o sub
+    if(c!==_curCat||s!==_curSub){
+      _curCat=c;_curSub=s;_sel={};
+      _catALL=c?getCatProducts(c):null;
+    }
     var old=document.getElementById('ifx-attrs');
     if(old&&old.parentNode)old.parentNode.removeChild(old);
-    var html=buildFilters(c);
+    var html=buildFilters(c,s);
     if(html){var cont=el('div');cont.id='ifx-attrs';cont.appendChild(html);fp.appendChild(cont);}
     if(_obs)_obs.observe(fp,{childList:true});
   }
@@ -1762,11 +1943,11 @@ def _build_nav_patch(products):
     if(!_catALL||!_curCat)return;
     _busy=true;
     var otherProds=(window.ALL||[]).filter(function(p){return p.cat!==_curCat;});
-    var filtered=_catALL.filter(function(p){
-      if(!p.a)return Object.keys(_sel).every(function(k){return !_sel[k]||!_sel[k].size;});
+    var base=_curSub?_catALL.filter(function(p){return p.s===_curSub;}):_catALL;
+    var filtered=base.filter(function(p){
       return Object.keys(_sel).every(function(k){
         if(!_sel[k]||!_sel[k].size)return true;
-        return _sel[k].has(p.a[k]);
+        return p.a&&_sel[k].has(p.a[k]);
       });
     });
     window.ALL=otherProds.concat(filtered);
@@ -1789,14 +1970,21 @@ def _build_nav_patch(products):
   function tryWrap(){
     if(typeof applyAll!=='function')return;
     var _orig=applyAll;
-    try{applyAll=function(){_orig.apply(this,arguments);if(!_busy){clearTimeout(window.__ifxW);window.__ifxW=setTimeout(inject,80);}};}catch(e){}
+    try{applyAll=function(){
+      _orig.apply(this,arguments);
+      if(!_busy){clearTimeout(window.__ifxW);window.__ifxW=setTimeout(inject,80);}
+    };}catch(e){}
   }
 
   function init(){
     if(!window.ALL||!window.ALL.length){setTimeout(init,300);return;}
     startObserver();tryWrap();
-    var _lc=null;
-    setInterval(function(){if(_busy)return;var c=getActiveCat();if(c!==_lc){_lc=c;clearTimeout(window.__ifxP);window.__ifxP=setTimeout(inject,100);}},400);
+    var _lc=null,_ls=null;
+    setInterval(function(){
+      if(_busy)return;
+      var c=getActiveCat(),s=getActiveSub(c);
+      if(c!==_lc||s!==_ls){_lc=c;_ls=s;clearTimeout(window.__ifxP);window.__ifxP=setTimeout(inject,100);}
+    },400);
     setTimeout(inject,800);
   }
 
