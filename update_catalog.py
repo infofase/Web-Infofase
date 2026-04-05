@@ -1847,28 +1847,11 @@ def _build_nav_patch(products):
     return (typeof cat!=='undefined'&&cat)?String(cat):null;
   }
 
-  // Detectar subfamilia activa: si todos los productos de la cat activa
-  // en window.ALL comparten el mismo p.s, esa es la subfamilia activa.
-  // Tambien intentar leer variable global 'sub' si existe.
+  // Sub activa: capturada por listener en #sb (100% fiable, sin depender de clase CSS)
+  var _activeSub=null;
   function getActiveSub(c){
     if(!c)return null;
-    // Intentar variable global sub/curSub/subcat
-    if(typeof sub!=='undefined'&&sub)return String(sub);
-    // Leer del DOM: boton de subfamilia activo en #sb (tienda usa #sb para subfamilias)
-    var sbEl=document.getElementById('sb');
-    if(sbEl){
-      var active=sbEl.querySelector('.on,.active,[aria-pressed=true]');
-      if(active){var t=(active.textContent||'').replace(/[(][0-9]+[)]/,'').trim();if(t)return t;}
-    }
-    // Detectar por productos visibles en grid
-    var cards=document.querySelectorAll('#grid .p-sub,.sub,.category-label,.cat-label');
-    if(cards.length>0){
-      var subs={};
-      cards.forEach(function(el){var t=(el.textContent||'').trim();if(t)subs[t]=(subs[t]||0)+1;});
-      var keys=Object.keys(subs);
-      if(keys.length===1)return keys[0];
-    }
-    return null;
+    return _activeSub;
   }
 
   function getCatProducts(c){
@@ -1979,11 +1962,26 @@ def _build_nav_patch(products):
   function init(){
     if(!window.ALL||!window.ALL.length){setTimeout(init,300);return;}
     startObserver();tryWrap();
-    var _lc=null,_ls=null;
+    // Listener en #sb: capturar subfamilia activa al hacer clic
+    var sbEl=document.getElementById('sb');
+    if(sbEl){
+      sbEl.addEventListener('click',function(e){
+        var btn=e.target;
+        if(!btn||!btn.textContent)return;
+        // El texto del boton es "Nombre sub (N)" — quitar el " (N)"
+        var t=btn.textContent.replace(/[(][0-9]+[)]/,'').trim();
+        if(!t)return;
+        // Si ya estaba activa, toggle a null
+        _activeSub=(_activeSub===t)?null:t;
+        clearTimeout(window.__ifxP);window.__ifxP=setTimeout(inject,80);
+      },true);
+    }
+    // Polling para detectar cambio de categoria
+    var _lc=null;
     setInterval(function(){
       if(_busy)return;
-      var c=getActiveCat(),s=getActiveSub(c);
-      if(c!==_lc||s!==_ls){_lc=c;_ls=s;clearTimeout(window.__ifxP);window.__ifxP=setTimeout(inject,100);}
+      var c=getActiveCat();
+      if(c!==_lc){_lc=c;_activeSub=null;clearTimeout(window.__ifxP);window.__ifxP=setTimeout(inject,100);}
     },400);
     setTimeout(inject,800);
   }
