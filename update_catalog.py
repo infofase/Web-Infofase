@@ -207,15 +207,38 @@ def extract_attrs(name, cat_raw=''):
     if not cpu:
         m = re.search(r'\b(Celeron|Pentium)\b', n, re.I)
         if m: cpu = m.group(1).capitalize()
-    # 9. Apple Silicon M1/M2/M3/M4
+    # 9. Intel Core nuevo (sin "i"): "7-150U", "5-120U", "7-240H", "7-1355U"
+    if not cpu:
+        m = re.search(r'(?<![A-Za-z0-9])([579])-(\d{3,4}[A-Z]{0,2})', n, re.I)
+        if m: cpu = f"I{m.group(1)}"  # normalizar como I5/I7/I9
+    # 10. Intel Ultra abreviado: " U5 ", " U7 ", " U9 " (standalone sin guión)
+    if not cpu:
+        m = re.search(r'(?<![A-Z0-9])(U[579])(?=\s+\d|\s+[A-Z])', n, re.I)
+        if m: cpu = f"Intel Ultra {m.group(1)[1]}"
+    # 11. AMD Ryzen con guión: "R9-HX370", "R9-7945HX"
+    if not cpu:
+        m = re.search(r'(?<![A-Za-z])(R[3579])[-]', n, re.I)
+        if m: cpu = f"AMD Ryzen {m.group(1)[1]}"
+    # 12. Intel i9 con prefijo typo: "1i9-13900H"
+    if not cpu:
+        m = re.search(r'1?(i[3579])[-]\d', n, re.I)
+        if m: cpu = m.group(1)[:2].upper()
+    # 13. Apple Silicon M1/M2/M3/M4
     if not cpu:
         m = re.search(r'\b(M[1-4])(?:\s+(?:Pro|Max|Ultra))?\b', n, re.I)
         if m and m.group(0).upper().startswith('M'):
             cpu = f"Apple {m.group(0).strip()}"
-    # 10. Qualcomm / otros ARM
+    # 14. Apple MacBook sin chip explícito → "Apple M1" genérico
+    if not cpu and 'macbook' in nl:
+        cpu = 'Apple M1'
+    # 15. Qualcomm Snapdragon X / otros ARM
     if not cpu:
-        m = re.search(r'\b(Snapdragon|MediaTek|Dimensity)\b', n, re.I)
-        if m: cpu = m.group(1).capitalize()
+        m = re.search(r'\b(Snapdragon|X1[EHP]|MediaTek|Dimensity|Exynos)\b', n, re.I)
+        if m:
+            if 'X1' in m.group(1).upper() or 'Snapdragon' in m.group(1):
+                cpu = 'Snapdragon X'
+            else:
+                cpu = m.group(1).capitalize()
     if cpu: a['procesador'] = cpu
 
 
@@ -367,23 +390,78 @@ def extract_attrs(name, cat_raw=''):
         elif has_jack:           a['tipo_conexion'] = 'Jack 3.5mm'
 
     # ─── TIPO IMPRESORA / FORMATO PAPEL / WIFI ────────────────────
-    if 'impresora' in cat or 'láser' in cat or 'inyección' in cat or 'multif' in nl:
-        if re.search(r'\bMultif\b|\bMultifunc\b', n, re.I):   a['tipo_imp'] = 'Multifunción'
-        elif re.search(r'\bLáser\b|\bLaser\b|\bLED\b', n, re.I): a['tipo_imp'] = 'Láser'
-        elif re.search(r'\bTérmica\b|\bTermica\b', n, re.I):  a['tipo_imp'] = 'Térmica'
-        elif re.search(r'\bPlotter\b', n, re.I):               a['tipo_imp'] = 'Plotter'
-        elif re.search(r'\b3D\b', n, re.I):                    a['tipo_imp'] = '3D'
-        else:                                                   a['tipo_imp'] = 'Inkjet'
-        # Color / BN
-        if re.search(r'\bColor\b', n, re.I):                   a['color_imp'] = 'Color'
-        elif re.search(r'\bB/N\b|\bMono\b|\bMonocromo\b', n, re.I): a['color_imp'] = 'Monocromo'
-        # Formato papel
-        if re.search(r'\bA3\+?\b', n):    a['formato_papel'] = 'A3'
-        elif re.search(r'\bA4\b', n):     a['formato_papel'] = 'A4'
+    # Usar cat_raw como fuente primaria para tipo_imp (más fiable que el nombre)
+    _imp_cat = cat_raw.lower() if cat_raw else ''
+    _is_printer = ('impresora' in cat or 'láser' in cat or 'inyección' in cat
+                   or 'etiqueta' in _imp_cat or 'rotuladora' in _imp_cat
+                   or 'plotter' in _imp_cat or 'matricial' in _imp_cat
+                   or 'multif' in nl)
+
+    if _is_printer:
+        # ── Determinar tipo_imp por categoría Binary (cat_raw) ──
+        if re.search(r'inyecci[oó]n.*multifunci[oó]n|multifunci[oó]n.*inyecci[oó]n|ink.*multi|multi.*ink', _imp_cat):
+            a['tipo_imp'] = 'Multifunción'
+        elif re.search(r'inyecci[oó]n de tinta|inkjet', _imp_cat):
+            # Distinguir impresoras individuales de multifunciones por nombre
+            if re.search(r'Multif|Multifunci[oó]n', n, re.I):
+                a['tipo_imp'] = 'Multifunción'
+            else:
+                a['tipo_imp'] = 'Inkjet'
+        elif re.search(r'l[aá]ser.*multifunci[oó]n|multifunci[oó]n.*b[/\\\\]?n|multifunci[oó]n.*color', _imp_cat):
+            a['tipo_imp'] = 'Multifunción'
+        elif re.search(r'impresoras l[aá]ser>(?:monocromo|color)', _imp_cat):
+            a['tipo_imp'] = 'Láser'
+        elif re.search(r'impresoras l[aá]ser>varios', _imp_cat):
+            pass  # Accesorios láser — sin tipo_imp
+        elif re.search(r'l[aá]ser', _imp_cat):
+            # Cualquier otro láser: asignar por nombre
+            if re.search(r'Multif|Multifunci[oó]n', n, re.I):
+                a['tipo_imp'] = 'Multifunción'
+            else:
+                a['tipo_imp'] = 'Láser'
+        elif re.search(r'rotuladoras?', _imp_cat):
+            a['tipo_imp'] = 'Rotuladora'
+        elif re.search(r'etiquetas?', _imp_cat):
+            a['tipo_imp'] = 'Térmica'
+        elif re.search(r'plotter', _imp_cat):
+            if re.search(r'Plotter', n, re.I):
+                a['tipo_imp'] = 'Plotter'
+        elif re.search(r'matricial', _imp_cat):
+            a['tipo_imp'] = 'Matricial'
+        elif re.search(r'impresoras 3d', _imp_cat):
+            a['tipo_imp'] = '3D'
+        elif re.search(r'impresoras tpv|tpv.*impresora', _imp_cat):
+            a['tipo_imp'] = 'Térmica'
+        else:
+            # Fallback: determinar por nombre del producto
+            if re.search(r'Multif|Multifunci[oó]n', n, re.I):
+                a['tipo_imp'] = 'Multifunción'
+            elif re.search(r'Laser[Jj]et|LaserJet|L[aá]ser', n, re.I):
+                a['tipo_imp'] = 'Láser'
+            elif re.search(r'T[eé]rmica|Termica', n, re.I):
+                a['tipo_imp'] = 'Térmica'
+            elif re.search(r'Plotter', n, re.I):
+                a['tipo_imp'] = 'Plotter'
+            elif re.search(r'Rotuladora', n, re.I):
+                a['tipo_imp'] = 'Rotuladora'
+            elif re.search(r'Matricial|LX-|LQ-', n, re.I):
+                a['tipo_imp'] = 'Matricial'
+            elif _is_printer:
+                a['tipo_imp'] = 'Inkjet'
+
+        # Color / BN (solo para impresoras con tipo_imp asignado)
+        if a.get('tipo_imp') and a['tipo_imp'] not in ('Rotuladora','Térmica','3D'):
+            if re.search(r'\bColor\b', n, re.I):                   a['color_imp'] = 'Color'
+            elif re.search(r'\bB/N\b|\bMono\b|\bMonocromo\b', n, re.I): a['color_imp'] = 'Monocromo'
+        # Formato papel (solo para impresoras de papel)
+        if a.get('tipo_imp') and a['tipo_imp'] in ('Inkjet','Láser','Multifunción'):
+            if re.search(r'\bA3\+?\b', n):    a['formato_papel'] = 'A3'
+            elif re.search(r'\bA4\b', n):     a['formato_papel'] = 'A4'
         # WiFi
-        if re.search(r'\bWi[\s-]?Fi\b|\bWireless\b|\bWF\b', n, re.I): a['wifi_imp'] = 'Con WiFi'
-        # Dúplex
-        if re.search(r'\bDúplex\b|\bDuplex\b', n, re.I):      a['duplex'] = 'Dúplex automático'
+        if a.get('tipo_imp'):
+            if re.search(r'\bWi[\s-]?Fi\b|\bWireless\b|\bWF\b', n, re.I): a['wifi_imp'] = 'Con WiFi'
+            # Dúplex
+            if re.search(r'\bDúplex\b|\bDuplex\b', n, re.I):      a['duplex'] = 'Dúplex automático'
 
     # ─── SAI / UPS ────────────────────────────────────────────────
     if 'sai' in cat or 'ups' in cat or re.search(r'\bS\.A\.I\b|\bSAI\b|\bUPS\b', n, re.I):
@@ -398,17 +476,42 @@ def extract_attrs(name, cat_raw=''):
 
     # ─── MEMORIAS RAM (componentes) ───────────────────────────────
     if 'memori' in cat:
-        m = re.search(r'(DDR[2345]?)\s*(\d+)\s*Gb', n, re.I)
+        # tipo_ram: DDR5, DDR4, DDR3L, DDR3, DDR2, DDR, LPDDR5, SDRAM
+        m = re.search(r'(LPDDR[45]?|DDR[2-5]L?|DDR)\s*(\d+)?\s*Gb', n, re.I)
         if m:
-            ddr = m.group(1).upper()
-            size = int(m.group(2))
+            raw = m.group(1).upper()
+            size_str = m.group(2)
+            # Normalize type
+            if 'LPDDR5' in raw:      ddr = 'DDR5'
+            elif 'LPDDR4' in raw:    ddr = 'DDR4'
+            elif 'DDR5' in raw:      ddr = 'DDR5'
+            elif 'DDR4' in raw:      ddr = 'DDR4'
+            elif 'DDR3' in raw:      ddr = 'DDR3'
+            elif 'DDR2' in raw:      ddr = 'DDR2 (legacy)'
+            else:                    ddr = 'DDR'
             a['tipo_ram'] = ddr
-            if size <= 8:    a['capacidad_ram'] = '8 GB o menos'
-            elif size <= 16: a['capacidad_ram'] = '16 GB'
-            elif size <= 32: a['capacidad_ram'] = '32 GB'
-            else:            a['capacidad_ram'] = '64 GB+'
+            if size_str:
+                size = int(size_str)
+                if size <= 8:    a['capacidad_ram'] = '8 GB o menos'
+                elif size <= 16: a['capacidad_ram'] = '16 GB'
+                elif size <= 32: a['capacidad_ram'] = '32 GB'
+                else:            a['capacidad_ram'] = '64 GB+'
+        elif re.search(r'\bSDRAM\b', n, re.I):
+            a['tipo_ram'] = 'DDR (legacy)'
+        # Also capture size separately if not already found (e.g. "DDR5 32Gb" without match)
+        if not a.get('tipo_ram'):
+            m2 = re.search(r'(DDR[2-5]?L?)\b', n, re.I)
+            if m2: a['tipo_ram'] = m2.group(1).upper().replace('DDR3L','DDR3').replace('DDR2','DDR2 (legacy)')
+        if not a.get('capacidad_ram'):
+            ms = re.search(r'(\d+)\s*Gb', n, re.I)
+            if ms:
+                size = int(ms.group(1))
+                if size <= 8:    a['capacidad_ram'] = '8 GB o menos'
+                elif size <= 16: a['capacidad_ram'] = '16 GB'
+                elif size <= 32: a['capacidad_ram'] = '32 GB'
+                else:            a['capacidad_ram'] = '64 GB+'
         # Velocidad
-        m = re.search(r'(\d{4})\s*(?:MHz|Mhz)', n)
+        m = re.search(r'(\d{4,5})\s*(?:MHz|Mhz)', n)
         if m:
             mhz = int(m.group(1))
             if mhz <= 2666:   a['velocidad_ram'] = '2666 MHz'
@@ -420,16 +523,31 @@ def extract_attrs(name, cat_raw=''):
         if m: a['formato_ram'] = m.group(1).upper()
 
     # ─── CABLES ───────────────────────────────────────────────────
-    if 'cable' in cat or 'latiguillo' in nl:
-        if re.search(r'\bHDMI\b', n, re.I):         a['tipo_cable'] = 'HDMI'
-        elif re.search(r'\bDisplayPort\b|\b\bDP/', n, re.I): a['tipo_cable'] = 'DisplayPort'
-        elif re.search(r'\bVGA\b', n, re.I):         a['tipo_cable'] = 'VGA'
-        elif re.search(r'\bDVI\b', n, re.I):         a['tipo_cable'] = 'DVI'
-        elif re.search(r'\bUSB[\s-]?C\b', n, re.I):  a['tipo_cable'] = 'USB-C'
-        elif re.search(r'\bUSB\b', n, re.I):          a['tipo_cable'] = 'USB'
-        elif re.search(r'\bRJ45\b|\bCat\.?\s*[567]', n, re.I): a['tipo_cable'] = 'Red RJ45'
-        elif re.search(r'\b3\.5\s*mm\b', n, re.I):   a['tipo_cable'] = 'Audio 3.5mm'
-        elif re.search(r'\bJack\b', n, re.I):         a['tipo_cable'] = 'Audio Jack'
+    _is_cable_cat = 'cable' in cat or 'latiguillo' in nl or 'conector' in nl
+    if _is_cable_cat:
+        if re.search(r'\bHDMI\b', n, re.I):                           a['tipo_cable'] = 'HDMI'
+        elif re.search(r'\bDisplayPort\b|\bDP\b|\bDP/', n, re.I):     a['tipo_cable'] = 'DisplayPort'
+        elif re.search(r'\bVGA\b', n, re.I):                           a['tipo_cable'] = 'VGA'
+        elif re.search(r'\bDVI\b', n, re.I):                           a['tipo_cable'] = 'DVI'
+        elif re.search(r'\bThunderbolt\b', n, re.I):                   a['tipo_cable'] = 'Thunderbolt'
+        elif re.search(r'USB[\s-]?C|Type[\s-]?C|USB[\s-]?3\.[12]', n, re.I): a['tipo_cable'] = 'USB-C'
+        elif re.search(r'\bUSB\b', n, re.I):                           a['tipo_cable'] = 'USB'
+        elif re.search(r'\bRJ45\b|Cat\.?\s*[5678]|FTP|UTP|STP|latiguillo', n, re.I): a['tipo_cable'] = 'Red RJ45'
+        elif re.search(r'\bRJ11\b|\bRJ12\b', n, re.I):                a['tipo_cable'] = 'Teléfono RJ11'
+        elif re.search(r'3\.5\s*mm|Audio|Jack|Minijack|TRS|XLR', n, re.I): a['tipo_cable'] = 'Audio'
+        elif re.search(r'\bOptical\b|\bToslink\b|\bFibra\b', n, re.I): a['tipo_cable'] = 'Óptico'
+        elif re.search(r'\bCoaxial\b|\bCoax\b|\bRF\b|F\s*/\s*[FM]|TV.*anten|RG[\s-]?\d', n, re.I): a['tipo_cable'] = 'Coaxial RF'
+        elif re.search(r'\bSATA\b|\beSATA\b', n, re.I):               a['tipo_cable'] = 'SATA'
+        elif re.search(r'mUSB|Micro[\s-]USB|Mini[\s-]USB', n, re.I):  a['tipo_cable'] = 'USB'
+        elif re.search(r'\bSVGA\b|HDB15|VGA.*[MH]-[MH]', n, re.I):  a['tipo_cable'] = 'VGA'
+        elif re.search(r'Splitter|Switch.*HDMI|Multiplicador', n, re.I): a['tipo_cable'] = 'HDMI'
+        elif re.search(r'\bMolex\b|\bATX\b|\bCPU.*8.?pin|8.*pin.*CPU|\bPCIe\b', n, re.I): a['tipo_cable'] = 'Alimentación PC'
+        elif re.search(r'C13|C14|C7|C8|CEE7|Schuko|CA\b|AC\b|IEC\b|alimentaci', n, re.I): a['tipo_cable'] = 'Alimentación'
+        elif re.search(r'Micro\s*HDMI|Mini\s*HDMI', n, re.I):         a['tipo_cable'] = 'HDMI'
+        elif re.search(r'\bKVM\b', n, re.I):                           a['tipo_cable'] = 'KVM'
+        elif re.search(r'serie\b|serial\b|RS[\s-]?232|RS[\s-]?485|COM\b', n, re.I): a['tipo_cable'] = 'Serie'
+        elif re.search(r'paralelo|parallel|LPT\b|centronics', n, re.I): a['tipo_cable'] = 'Paralelo'
+        elif re.search(r'PS/2|PS2', n, re.I):                         a['tipo_cable'] = 'PS/2'
         # Longitud
         m = re.search(r'(\d+(?:[.,]\d+)?)\s*m\b', nl)
         if m:
@@ -1601,17 +1719,17 @@ def _build_nav_patch(products):
         "Soportes portátil":   [],
         "Accesorios portátil": [],
         # IMPRESORAS
-        "Multifunción tinta":  ["formato_papel","wifi_imp"],
-        "Multifunción láser BN":["formato_papel","wifi_imp"],
-        "Multifunción láser color":["formato_papel","wifi_imp"],
-        "Inyección de tinta":  ["formato_papel","wifi_imp"],
-        "Láser monocromo":     ["formato_papel","wifi_imp"],
-        "Láser color":         ["formato_papel","wifi_imp"],
-        "Láser":               ["formato_papel"],
-        "Etiquetas":           [],
-        "Plotter":             ["formato_papel"],
-        "Rotuladoras":         [],
-        "Matriciales":         [],
+        "Multifunción tinta":     ["color_imp","formato_papel","wifi_imp"],
+        "Multifunción láser BN":  ["formato_papel","wifi_imp","duplex"],
+        "Multifunción láser color":["color_imp","formato_papel","wifi_imp"],
+        "Inyección de tinta":     ["color_imp","formato_papel","wifi_imp"],
+        "Láser monocromo":        ["formato_papel","wifi_imp","duplex"],
+        "Láser color":            ["color_imp","formato_papel","wifi_imp"],
+        "Láser":                  [],
+        "Etiquetas":              [],
+        "Plotter":                [],
+        "Rotuladoras":            [],
+        "Matriciales":            [],
         # REDES
         "Switch Gigabit":      ["puertos","poe"],
         "Switch 10G":          ["puertos","poe"],
@@ -1717,7 +1835,7 @@ def _build_nav_patch(products):
         "ordenadores":   ["procesador","ram","almacenamiento","tipo_disco","sistema_op"],
         "monitores":     ["pantalla","panel","resolucion","refresco"],
         "componentes":   ["almacenamiento","tipo_disco","procesador","tipo_ram","capacidad_ram"],
-        "impresoras":    ["tipo_imp","color_imp","formato_papel","wifi_imp"],
+        "impresoras":    ["tipo_imp","color_imp","formato_papel"],
         "escaneres":     [],
         "cables":        ["tipo_cable","longitud"],
         "cable_red":     ["longitud","categoria_red"],
