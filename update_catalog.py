@@ -242,26 +242,43 @@ def extract_attrs(name, cat_raw=''):
     if cpu: a['procesador'] = cpu
 
 
-    # ─── MEMORIA RAM ─────────────────────────────────────────────
+        # ─── MEMORIA RAM ─────────────────────────────────────────────
     ram_val = None
+    _is_phone = 'smartphone' in cat or 'iphone' in nl or 'movil' in cat
+    _is_laptop = 'portatil' in cat or 'notebook' in cat or 'ordenador' in cat
+
     # 1. Explícito: "16Gb RAM", "DDR4 8Gb"
     m = re.search(r'(\d+)\s*Gb\s+(?:RAM|DDR\d|LPDDR\d|SODIMM)', n, re.I)
     if not m: m = re.search(r'(?:RAM|DDR\d|LPDDR\d)\s+(\d+)\s*Gb', n, re.I)
-    # 2. CPU directo seguido de RAM: "i5 16Gb", "R7 8Gb", "U7-155H 32Gb"
+    # 2. CPU directo seguido de RAM: "i5 16Gb", "R7 8Gb"
     if not m: m = re.search(
-        r'(?:i[3579]|Ultra\s*[579]|U[579]-\S+|Ryzen\s+[579]|R[3579]-\S+|N\d{3,4})\s+(\d+)\s*Gb', n, re.I)
-    # 3. Después de pulgadas: "14\" 16Gb", "11\" 8Gb"
-    if not m: m = re.search(r'[\d.]+["\u201d]\s+(\d+)\s*Gb', n, re.I)
-    # 4. Fallback ordenado: primer Gb típico de RAM (excluyendo 4Gb que podría ser GPU)
-    #    Prefiere valores más altos que 4 para evitar VRAM
-    if not m:
+        r'(?:i[3579]|Ultra\s*[579]|U[579]-\S+|Ryzen\s+[579]|R[3579]-\S+|N\d{3,4}|M[1-4])\s+(\d+)\s*Gb', n, re.I)
+    # 3. Después de pulgadas (solo portátiles/tablets, NO smartphones donde es storage)
+    if not m and not _is_phone:
+        m = re.search(r'[\d.]+["\u201d]\s+(\d+)\s*Gb', n, re.I)
+    # 4. Smartphones Android: patrón "8Gb 256Gb" → primer=RAM, segundo=storage
+    if not m and _is_phone and not re.search(r'iPhone|Apple\s+iPhone', n, re.I):
+        two_gb = re.findall(r'\b(\d+)\s*Gb\b', n, re.I)
+        if len(two_gb) >= 2:
+            v1, v2 = int(two_gb[0]), int(two_gb[1])
+            if v1 <= 24 and v2 >= 32:
+                ram_val = v1
+                if 'almacenamiento' not in a:
+                    if v2 <= 64:    a['almacenamiento'] = '64 GB'
+                    elif v2 <= 128: a['almacenamiento'] = '128 GB'
+                    elif v2 <= 256: a['almacenamiento'] = '256 GB'
+                    elif v2 <= 512: a['almacenamiento'] = '512 GB'
+                    else:           a['almacenamiento'] = '1 TB+'
+    # 5. Fallback portátiles/PCs: primer Gb que no sea VRAM de GPU
+    if not m and not _is_phone and ram_val is None:
         candidates = []
         for cap in re.finditer(r'\b(\d+)\s*Gb\b', n, re.I):
             v = int(cap.group(1))
-            if v in (2,4,6,8,12,16,24,32,48,64,96,128):
+            after = n[cap.end():cap.end()+25]
+            is_vram = bool(re.search(r'(RTX|GTX|RX\s|MX\d|Iris|Radeon|GeForce|Frame|VRAM)', after, re.I))
+            if v in (2,4,6,8,12,16,24,32,48,64,96,128) and not is_vram:
                 candidates.append((cap.start(), v))
-        # Preferir primero un valor >4 (descartar 4Gb GPU al final del nombre)
-        preferred = [c for c in candidates if c[1] > 4]
+        preferred = [c for c in candidates if c[1] > 4] if _is_laptop else candidates
         if preferred: ram_val = preferred[0][1]
         elif candidates: ram_val = candidates[0][1]
     if m: ram_val = int(m.group(1))
@@ -292,14 +309,18 @@ def extract_attrs(name, cat_raw=''):
             unit = mc.group(2).upper()
             gb_equiv = v * 1000 if unit == 'TB' else v
             # Capacidades típicas de disco: >= 128GB y no coincide con RAM ya extraída
-            if gb_equiv >= 120 and not (a.get('ram') and str(int(v)) + ' GB' == a.get('ram','')):
+            # For phones: 32GB+; for others: 120GB+
+            _min_gb = 32 if ('smartphone' in cat or 'iphone' in nl or 'tablet' in cat) else 120
+            if gb_equiv >= _min_gb and not (a.get('ram') and str(int(v)) + ' GB' == a.get('ram','')):
                 m = mc; break
     if m:
         stor_val = float(m.group(1).replace(',','.'))
         stor_unit = m.group(2).upper()
         if stor_unit == 'TB': stor_gb = stor_val * 1000
         else:                 stor_gb = stor_val
-        if stor_gb < 64:       pass  # demasiado pequeño, probablemente RAM
+        # For phones/tablets: 32GB+ is storage. For laptops: 64GB+ 
+        _min_stor = 32 if ('smartphone' in cat or 'iphone' in nl or 'tablet' in cat) else 64
+        if stor_gb < _min_stor:   pass  # demasiado pequeño
         elif stor_gb < 128:    a['almacenamiento'] = '64 GB'
         elif stor_gb < 256:    a['almacenamiento'] = '128 GB'
         elif stor_gb < 512:    a['almacenamiento'] = '256 GB'
@@ -1193,7 +1214,7 @@ _FAM_SUB_MAP = [
     ("telefonía / smartphones>accesorios de telefonía móvil>protectores de pantalla",("Smartphones","Protectores pantalla")),
     ("telefonía / smartphones>accesorios de telefonía móvil>smartwatch",   ("Wearables","Smartwatch")),
     ("telefonía / smartphones>accesorios de telefonía móvil>pulseras smartband",("Wearables","Smartband")),
-    ("telefonía / smartphones>accesorios de telefonía móvil",              ("Smartphones","Accesorios móvil")),
+    ("telefonía / smartphones>accesorios de telefonía móvil",              ("Periféricos","Accesorios móvil")),
     ("telefonía / smartphones>telefonía fija e ip>telefonía ip",           ("Telefonía Fija","VoIP")),
     ("telefonía / smartphones>telefonía fija e ip>telefonía fija",         ("Telefonía Fija","Teléfonos fijos")),
     ("telefonía / smartphones>telefonía fija e ip",                        ("Telefonía Fija","Telefonía IP")),
@@ -1762,6 +1783,7 @@ def _build_nav_patch(products):
         "Hubs USB":            [],
         "Adaptadores USB":     [],
         "Accesorios streaming":["conectividad"],
+        "Accesorios móvil":    [],
         "Docks y KVM":         [],
         "Presentadores":       ["conectividad"],
         # AUDIO
