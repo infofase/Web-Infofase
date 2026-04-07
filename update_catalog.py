@@ -242,7 +242,7 @@ def extract_attrs(name, cat_raw=''):
     if cpu: a['procesador'] = cpu
 
 
-        # ─── MEMORIA RAM ─────────────────────────────────────────────
+            # ─── MEMORIA RAM ─────────────────────────────────────────────
     ram_val = None
     _is_phone = 'smartphone' in cat or 'iphone' in nl or 'movil' in cat
     _is_laptop = 'portatil' in cat or 'notebook' in cat or 'ordenador' in cat
@@ -250,15 +250,32 @@ def extract_attrs(name, cat_raw=''):
     # 1. Explícito: "16Gb RAM", "DDR4 8Gb"
     m = re.search(r'(\d+)\s*Gb\s+(?:RAM|DDR\d|LPDDR\d|SODIMM)', n, re.I)
     if not m: m = re.search(r'(?:RAM|DDR\d|LPDDR\d)\s+(\d+)\s*Gb', n, re.I)
-    # 2. CPU directo seguido de RAM: "i5 16Gb", "R7 8Gb"
+    # 2. CPU con guión + RAM: "i7-13700H 16Gb", "i5-12450HX 24Gb", "R9-HX370 32Gb"
+    # 2a. CPU hyphenated model then RAM: "i7-13700H 16Gb", "i5-12450HX 24Gb"
     if not m: m = re.search(
-        r'(?:i[3579]|Ultra\s*[579]|U[579]-\S+|Ryzen\s+[579]|R[3579]-\S+|N\d{3,4}|M[1-4])\s+(\d+)\s*Gb', n, re.I)
-    # 3. Después de pulgadas (solo portátiles/tablets, NO smartphones donde es storage)
+        r'(?:i[3579]-[\w]+|R[3579]-[\w]+)\s+(\d+)\s*Gb', n, re.I)
+    # 2b. CPU direct then RAM: "i5 16Gb", "R7 8Gb", "N100 8Gb", "M2 8Gb"
+    if not m: m = re.search(
+        r'(?:i[3579]\b|Ultra\s*[579]|U[579]-\S+|Ryzen\s+[579]|N\d{3,4}|M[1-4])\s+(\d+)\s*Gb', n, re.I)
+    # 3. Intel/AMD nuevo naming sin "i": "7-155H 16Gb", "5-120U 8Gb"
+    if not m: m = re.search(r'(?<![A-Za-z0-9])(?:[579]-\d{3,4}[A-Z]{0,2})\s+(\d+)\s*Gb', n, re.I)
+    # 4. Después de pulgadas (solo portátiles/tablets, NO smartphones)
+    #    EXCLUIR: si ya hay otro Gb antes de las pulgadas (ese otro es RAM real)
     if not m and not _is_phone:
-        m = re.search(r'[\d.]+["\u201d]\s+(\d+)\s*Gb', n, re.I)
-    # 4. Smartphones Android: patrón "8Gb 256Gb" → primer=RAM, segundo=storage
+        # Check: is there a Gb before the screen size?
+        screen_m = re.search(r'[\d.]+["”]\s+(\d+)\s*Gb', n, re.I)
+        if screen_m:
+            screen_pos = screen_m.start()
+            # Check if there's a Gb value BEFORE screen size that looks like RAM
+            before_screen = n[:screen_pos]
+            prev_gb = re.findall(r'\b(\d+)\s*Gb\b', before_screen, re.I)
+            # If there's already a RAM-like value before screen, the after-screen Gb is VRAM
+            has_prior_ram = any(int(v) in (4,6,8,12,16,24,32,48) for v in prev_gb)
+            if not has_prior_ram:
+                m = screen_m
+    # 5. Smartphones Android: patrón "8Gb 256Gb" → primer=RAM, segundo=storage
     if not m and _is_phone and not re.search(r'iPhone|Apple\s+iPhone', n, re.I):
-        two_gb = re.findall(r'\b(\d+)\s*Gb\b', n, re.I)
+        two_gb = [m for m in re.findall(r'\b(\d+)\s*Gb(?!/\s*s)\b', n, re.I)]
         if len(two_gb) >= 2:
             v1, v2 = int(two_gb[0]), int(two_gb[1])
             if v1 <= 24 and v2 >= 32:
@@ -269,15 +286,22 @@ def extract_attrs(name, cat_raw=''):
                     elif v2 <= 256: a['almacenamiento'] = '256 GB'
                     elif v2 <= 512: a['almacenamiento'] = '512 GB'
                     else:           a['almacenamiento'] = '1 TB+'
-    # 5. Fallback portátiles/PCs: primer Gb que no sea VRAM de GPU
+    # 6. Fallback portátiles/PCs: primer Gb que no sea VRAM de GPU o storage
     if not m and not _is_phone and ram_val is None:
         candidates = []
         for cap in re.finditer(r'\b(\d+)\s*Gb\b', n, re.I):
             v = int(cap.group(1))
-            after = n[cap.end():cap.end()+25]
-            is_vram = bool(re.search(r'(RTX|GTX|RX\s|MX\d|Iris|Radeon|GeForce|Frame|VRAM)', after, re.I))
-            if v in (2,4,6,8,12,16,24,32,48,64,96,128) and not is_vram:
+            after = n[cap.end():cap.end()+30]
+            before = n[max(0,cap.start()-5):cap.start()]
+            # Skip if followed by GPU name or preceded by storage context
+            is_vram = bool(re.search(r'(RTX|GTX|RX\s|MX\d|Iris|Radeon|GeForce|Frame|VRAM|Arc\s)', after, re.I))
+            # Skip speed notation: "6Gb/s" (disk interface speed, not memory)
+            is_speed = bool(re.search(r'^\s*/\s*s', after, re.I))
+            # Skip large values that are clearly storage (256Gb, 512Gb, 1Tb)
+            is_stor = v >= 128
+            if v in (2,3,4,6,8,12,16,24,32,48,64,96) and not is_vram and not is_speed and not is_stor:
                 candidates.append((cap.start(), v))
+        # For portátiles: prefer >4 GB to avoid picking up 4Gb GPU VRAM
         preferred = [c for c in candidates if c[1] > 4] if _is_laptop else candidates
         if preferred: ram_val = preferred[0][1]
         elif candidates: ram_val = candidates[0][1]
@@ -2091,9 +2115,10 @@ def _build_nav_patch(products):
     var s=getActiveSub();
     // Reset sel cuando cambia cat o sub
     if(c!==_curCat||s!==_curSub){
-      _curCat=c;_curSub=s;_sel={};
-      _catALL=c?getCatProds(c):null;
-      
+      _curCat=c;_curSub=s;_sel={};_passIds=null;
+      // _catALL = full category from backup (not filtered window.ALL!)
+      if(c&&_catBackup[c]){ _catALL=_catBackup[c]; }
+      else{ _catALL=c?(window.ALL||[]).filter(function(p){return p.cat===c;}):null; }
     }
     
     
@@ -2101,66 +2126,79 @@ def _build_nav_patch(products):
     if(old&&old.parentNode)old.parentNode.removeChild(old);
     var html=buildFilters(c,s);
     if(html){var cont=el('div');cont.id='ifx-attrs';cont.appendChild(html);fp.appendChild(cont);}
-    tagGridCards();
+    
     if(_obs)_obs.observe(fp,{childList:true});
   }
 
   // ── Aplicar filtros de atributos ───────────────────────────────
+  // IDs de productos que pasan el filtro actual (null = todos)
+  var _passIds = null;
+
   function applyFilter(){
     if(!_catALL||!_curCat)return;
     _busy=true;
     var ks=Object.keys(_sel).filter(function(k){return _sel[k]&&_sel[k].size;});
     var base=_curSub?_catALL.filter(function(p){return p.s===_curSub;}):_catALL;
-    if(_curSub){
-      // SUBIDX mode (sub selected): CSS hide/show — window.ALL stays intact
-      // Tag grid cards with product IDs
-      var grid=document.getElementById('grid');
-      if(grid){
-        var subProds=base;
-        var cards=grid.children;
-        for(var i=0;i<cards.length;i++){
-          var pid=cards[i].getAttribute('data-ifx-pid');
-          if(!pid&&i<subProds.length){pid=subProds[i].id||String(i);cards[i].setAttribute('data-ifx-pid',pid);}
-        }
-        var passSet=null;
-        if(ks.length){
-          var pass=base.filter(function(p){if(!p.a)return false;return ks.every(function(k){return _sel[k].has(p.a[k]);});});
-          passSet=new Set(pass.map(function(p){return p.id;}));
-        }
-        for(var j=0;j<cards.length;j++){
-          var cp2=cards[j].getAttribute('data-ifx-pid');
-          cards[j].style.display=(!passSet||passSet.has(cp2))?'':'none';
-        }
-        var shEl=document.getElementById('shown');
-        if(shEl){
-          if(!passSet){shEl.textContent=shEl.getAttribute('data-base')||shEl.textContent;}
-          else{if(!shEl.getAttribute('data-base'))shEl.setAttribute('data-base',shEl.textContent);
-               var vis=0;for(var k=0;k<cards.length;k++){if(cards[k].style.display!=='none')vis++;}
-               shEl.textContent=vis;}
-        }
-      }
-    }else{
-      // CATIDX mode (no sub): modify window.ALL → tienda pagination works
-      var filtered=base.filter(function(p){
-        if(!ks.length)return true;
+    if(ks.length){
+      var pass=base.filter(function(p){
         if(!p.a)return false;
         return ks.every(function(k){return _sel[k].has(p.a[k]);});
       });
+      _passIds=new Set(pass.map(function(p){return (p.id||'').toLowerCase();}));
+      // Modify window.ALL so pagination also shows correct products
       var other=(window.ALL||[]).filter(function(p){return p.cat!==_curCat;});
-      window.ALL=other.concat(filtered);
-      if(typeof applyAll==='function')applyAll();
+      window.ALL=other.concat(pass);
+    }else{
+      _passIds=null;
+      // Restore full category to window.ALL
+      if(_catBackup[_curCat]){
+        var other2=(window.ALL||[]).filter(function(p){return p.cat!==_curCat;});
+        window.ALL=other2.concat(_catBackup[_curCat]);
+      }
     }
+    if(typeof applyAll==='function')applyAll();
     _busy=false;
     inject();
   }
-  // Tag grid cards with IDs after applyAll (for SUBIDX CSS mode)
-  function tagGridCards(){
-    if(!_curSub||!_catALL)return;
-    var grid=document.getElementById('grid');if(!grid)return;
-    var subProds=_catALL.filter(function(p){return p.s===_curSub;});
-    var cards=grid.children;
-    for(var i=0;i<cards.length;i++){if(i<subProds.length)cards[i].setAttribute('data-ifx-pid',subProds[i].id||String(i));}
+
+  // cardId: extrae ID del producto de una tarjeta del grid
+  function cardId(card){
+    var ref=card.querySelector('.cref,.card-ref,[class*=ref]');
+    if(ref){var id=(ref.textContent||'').trim().toLowerCase();if(id)return id;}
+    var did=card.getAttribute('data-id')||card.getAttribute('data-ref')||card.getAttribute('data-sku');
+    if(did)return did.toLowerCase();
+    return '';
   }
+
+  // applyGridFilter: aplica CSS en las tarjetas actuales del grid
+  function applyGridFilter(){
+    var grid=document.getElementById('grid');
+    if(!grid)return;
+    var cards=Array.from(grid.querySelectorAll('[class*=card]:not([class*=ifx])'));
+    if(!cards.length) cards=Array.from(grid.children);
+    var vis=0;
+    cards.forEach(function(card){
+      if(!_passIds){card.style.display='';vis++;}
+      else{
+        var id=cardId(card);
+        var show=(!id)||_passIds.has(id);
+        card.style.display=show?'':'none';
+        if(show)vis++;
+      }
+    });
+    // Actualizar contador #shown
+    var shEl=document.getElementById('shown');
+    if(shEl){
+      if(_passIds){
+        if(!shEl.getAttribute('data-ifx-orig'))shEl.setAttribute('data-ifx-orig',shEl.textContent);
+        shEl.textContent=String(vis);
+      }else{
+        var orig=shEl.getAttribute('data-ifx-orig');
+        if(orig){shEl.textContent=orig;shEl.removeAttribute('data-ifx-orig');}
+      }
+    }
+  }
+  // Tag grid cards with IDs after applyAll (for SUBIDX CSS mode)
 
   // ── MutationObserver en #fpin ──────────────────────────────────
   function startObs(){
@@ -2177,18 +2215,24 @@ def _build_nav_patch(products):
     if(typeof applyAll!=='function')return;
     var _orig=applyAll;
     try{applyAll=function(){
-      // Only restore from backup if NOT called from applyFilter (i.e., not _busy)
-      if(!_busy&&typeof cat!=='undefined'&&cat&&_catBackup[cat]){
-        var _ccp=(window.ALL||[]).filter(function(p){return p.cat===cat;});
-        if(_ccp.length<_catBackup[cat].length){
-          var _oth2=(window.ALL||[]).filter(function(p){return p.cat!==cat;});
-          window.ALL=_oth2.concat(_catBackup[cat]);
-          _sel={};
+      if(!_busy){
+        var _newSub=getActiveSub();
+        var _newCat=getActiveCat();
+        var _subChanged=(_newSub!==_curSub)||(_newCat!==_curCat);
+        if(_subChanged){
+          // Sub/cat changed: clear filter AND restore full category from backup
+          _passIds=null; _sel={};
+          var _restoreCat=_newCat||_curCat;
+          if(_restoreCat&&_catBackup[_restoreCat]){
+            var _oth=(window.ALL||[]).filter(function(p){return p.cat!==_restoreCat;});
+            window.ALL=_oth.concat(_catBackup[_restoreCat]);
+          }
         }
       }
       _orig.apply(this,arguments);
+      // Re-apply CSS filter after every applyAll (pagination/sort/sub change)
       if(!_busy){
-        tagGridCards();
+        applyGridFilter();
         clearTimeout(window.__ifxW);window.__ifxW=setTimeout(inject,90);
       }
     };}catch(e){}
