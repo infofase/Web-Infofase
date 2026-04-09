@@ -1424,7 +1424,7 @@ def stock_status_binary(stock_local, stock_prov):
     return 'agotado',  0
 
 
-def process_binary_csv(text):
+def process_binary_csv(text, img_cache=None):
     """Procesa el CSV de Binary Canarias y devuelve lista de productos
     con la misma estructura que process_csv() (Megastore).
     Las imágenes vienen directamente de la URL del CSV.
@@ -1444,7 +1444,8 @@ def process_binary_csv(text):
         marca   = row.get('Marca', '').strip()
         cat_raw = row.get('Categoría', '').strip()
         part_n  = row.get('Part number', '').strip()
-        img_url = row.get('URL imagen', '').strip()
+        img_url   = row.get('URL imagen', '').strip()
+        icecat_id = row.get('Código Icecat', '').strip()
 
         if not codigo or not nombre:
             continue
@@ -1501,10 +1502,26 @@ def process_binary_csv(text):
         elif st == "transito" and qty > 0:
             p["tv"]  = qty
 
-        # Imagen directamente desde la URL del CSV
-        if img_url:
+        # Imagen: preferir Icecat CDN (público, sin bloqueo de hot-linking)
+        # sobre cluster.binarycanarias.com (bloqueado desde dominios externos)
+        icecat_num = int(icecat_id) if icecat_id.lstrip('-').isdigit() else -1
+        if icecat_num > 0:
+            # Código Icecat válido → usar CDN público de Icecat (sin autenticación)
+            icecat_img = f"https://images.icecat.biz/img/gallery/{icecat_num}_img.jpg"
+            p["img"]  = icecat_img
+            p["imgH"] = icecat_img
+        elif ICECAT_USER and img_cache is not None:
+            # Sin código Icecat → intentar búsqueda por marca+referencia via API
+            thumb, high = get_icecat_img(marca, pid, img_cache)
+            if thumb or high:
+                p["img"]  = thumb or high
+                p["imgH"] = high  or thumb
+            elif img_url:
+                p["img"]  = img_url
+                p["imgH"] = img_url
+        elif img_url:
             p["img"]  = img_url
-            p["imgH"] = img_url  # misma URL — el proveedor no da alta resolución separada
+            p["imgH"] = img_url
 
         a = extract_attrs(nombre, cat_raw)
         if a: p["a"] = a
@@ -2706,7 +2723,7 @@ def main():
     # Megastore sigue descargándose únicamente para actualizar la Zona Apple.
     binary_text = download_binary_csv()
     if binary_text:
-        binary_products = process_binary_csv(binary_text)
+        binary_products = process_binary_csv(binary_text, img_cache)
         if binary_products:
             products = binary_products  # Tienda = solo Binary
             log(f"  Tienda: usando solo Binary ({len(products)} productos)")
