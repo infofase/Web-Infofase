@@ -26,6 +26,8 @@ TEMPLATE  = "template.html" if os.path.exists("template.html") else "index.html"
 OUTPUT    = "index.html"
 LOG       = "update.log"
 IMG_CACHE = "img_cache.json"   # cache de icecat_id ya resueltos
+BINARY_IMG_CACHE = "binary_img_cache.json"  # cache de imágenes locales Binary
+IMGS_DIR  = "imgs"                          # directorio de imágenes descargadas
 IGIC      = 0.07
 
 # Credenciales de Icecat — vienen de GitHub Secrets (variables de entorno)
@@ -908,6 +910,115 @@ def save_img_cache(cache):
     with open(IMG_CACHE, "w", encoding="utf-8") as f:
         json.dump(cache, f, ensure_ascii=False)
 
+
+def load_binary_img_cache():
+    """Cache de imágenes Binary descargadas: {product_id: local_filename}"""
+    if os.path.exists(BINARY_IMG_CACHE):
+        try:
+            with open(BINARY_IMG_CACHE, encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            pass
+    return {}
+
+
+def save_binary_img_cache(cache):
+    with open(BINARY_IMG_CACHE, "w", encoding="utf-8") as f:
+        json.dump(cache, f, ensure_ascii=False)
+
+# Máximo de imágenes a descargar por ejecución (evita timeout en Actions)
+MAX_IMG_DOWNLOADS_PER_RUN = 500  # ~2-5 min. Primera vez se ejecuta varias veces.
+
+
+def download_binary_image(img_url, product_id, img_cache):
+    """Descarga una imagen desde la URL de Binary y la guarda en IMGS_DIR.
+
+    Estrategia incremental:
+      - Si product_id ya está en img_cache y el fichero existe → devuelve URL local.
+      - Si es nuevo o el fichero fue borrado → descarga, comprime, guarda y cachea.
+      - Si se supera MAX_IMG_DOWNLOADS_PER_RUN → devuelve fallback sin descargar.
+      - Si falla la descarga → devuelve None (el llamador usará fallback).
+
+    Devuelve la URL relativa "imgs/{filename}" o None si falla.
+    """
+    from urllib.request import urlopen, Request as _Req
+    from urllib.error import URLError, HTTPError
+    import io, struct, zlib as _zlib
+
+    if not img_url:
+        return None
+
+    # Nombre de fichero seguro (sanitizar el product_id)
+    safe_id = re.sub(r'[^A-Za-z0-9_\-]', '_', product_id)[:80]
+    filename = f"{safe_id}.jpg"
+    local_path = os.path.join(IMGS_DIR, filename)
+    local_url  = f"{IMGS_DIR}/{filename}"
+
+    # Ya descargado y existe → reusar
+    if product_id in img_cache and os.path.exists(local_path):
+        return local_url
+
+    # Límite de descargas por ejecución (evita timeout en Actions)
+    if not hasattr(download_binary_image, "_count"):
+        download_binary_image._count = 0
+    if download_binary_image._count >= MAX_IMG_DOWNLOADS_PER_RUN:
+        return None  # Llamador usará Icecat CDN como fallback
+    download_binary_image._count += 1
+
+    # Progreso cada 50 descargas
+    if download_binary_image._count % 50 == 1:
+        log(f"  Descargando imágenes Binary: {download_binary_image._count}/"f"{MAX_IMG_DOWNLOADS_PER_RUN}...")
+
+    # Descargar desde Binary (servidor→servidor: sin restricción de hotlink)
+    import time as _time
+    _time.sleep(0.12)  # ~8 req/s — cortés con el servidor
+    try:
+        req = _Req(img_url, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; Infofase-Bot/1.0)",
+        })
+        with urlopen(req, timeout=15) as resp:
+            raw = resp.read()
+    except (HTTPError, URLError, OSError) as e:
+        log(f"  IMG descarga fallida [{product_id}]: {e}")
+        return None
+
+    if len(raw) < 500:  # respuesta vacía o error HTML
+        return None
+
+    # Comprimir/recodificar a JPEG 85% usando sólo stdlib
+    # Si Pillow está disponible → recodificar; si no → guardar raw tal cual
+    os.makedirs(IMGS_DIR, exist_ok=True)
+    try:
+        from PIL import Image as _PILImage
+        import io as _io
+        img_obj = _PILImage.open(_io.BytesIO(raw)).convert("RGB")
+        # Resize si la imagen es demasiado grande (>1200px en el lado mayor)
+        max_side = 800
+        w, h = img_obj.size
+        if max(w, h) > max_side:
+            ratio = max_side / max(w, h)
+            img_obj = img_obj.resize((int(w*ratio), int(h*ratio)),
+                                     _PILImage.LANCZOS)
+        buf = _io.BytesIO()
+        img_obj.save(buf, format="JPEG", quality=82, optimize=True)
+        data = buf.getvalue()
+    except ImportError:
+        # Sin Pillow: guardar raw (ya es JPEG en Binary)
+        data = raw
+    except Exception as e:
+        log(f"  IMG recodificación fallida [{product_id}]: {e}")
+        data = raw
+
+    try:
+        with open(local_path, 'wb') as fout:
+            fout.write(data)
+    except OSError as e:
+        log(f"  IMG escritura fallida [{product_id}]: {e}")
+        return None
+
+    img_cache[product_id] = filename
+    return local_url
+
 def get_icecat_img(brand, product_code, cache):
     """Consulta Icecat Live (cuenta de pago) y guarda thumb, high, gallery, desc, specs.
     Autenticación: UserName + app_key en la URL (Full Icecat).
@@ -1424,7 +1535,7 @@ def stock_status_binary(stock_local, stock_prov):
     return 'agotado',  0
 
 
-def process_binary_csv(text, img_cache=None):
+def process_binary_csv(text, img_cache=None, binary_img_cache=None):
     """Procesa el CSV de Binary Canarias y devuelve lista de productos
     con la misma estructura que process_csv() (Megastore).
     Las imágenes vienen directamente de la URL del CSV.
@@ -1502,26 +1613,37 @@ def process_binary_csv(text, img_cache=None):
         elif st == "transito" and qty > 0:
             p["tv"]  = qty
 
-        # Imagen: preferir Icecat CDN (público, sin bloqueo de hot-linking)
-        # sobre cluster.binarycanarias.com (bloqueado desde dominios externos)
+        # ── Imagen ─────────────────────────────────────────────────────
+        # Prioridad:
+        #  1. Imagen local descargada (binary_img_cache) → URL relativa "imgs/{id}.jpg"
+        #  2. Icecat CDN público (si tiene Código Icecat válido) → sin auth, sin hotlink
+        #  3. Icecat Live API (si hay credenciales y no tiene código Icecat)
+        #  4. URL directa de Binary (fallback, puede estar bloqueada en navegador)
         icecat_num = int(icecat_id) if icecat_id.lstrip('-').isdigit() else -1
-        if icecat_num > 0:
-            # Código Icecat válido → usar CDN público de Icecat (sin autenticación)
-            icecat_img = f"https://images.icecat.biz/img/gallery/{icecat_num}_img.jpg"
-            p["img"]  = icecat_img
-            p["imgH"] = icecat_img
-        elif ICECAT_USER and img_cache is not None:
-            # Sin código Icecat → intentar búsqueda por marca+referencia via API
+
+        img_final = None
+
+        # 1. Imagen local descargada previamente o descarga ahora si es nueva
+        if binary_img_cache is not None and img_url:
+            img_final = download_binary_image(img_url, pid, binary_img_cache)
+
+        # 2. Icecat CDN público (si tiene código Icecat válido y no hay local)
+        if not img_final and icecat_num > 0:
+            img_final = f"https://images.icecat.biz/img/gallery/{icecat_num}_img.jpg"
+
+        # 3. Icecat Live API (productos sin código Icecat)
+        if not img_final and ICECAT_USER and img_cache is not None and icecat_num <= 0:
             thumb, high = get_icecat_img(marca, pid, img_cache)
             if thumb or high:
-                p["img"]  = thumb or high
-                p["imgH"] = high  or thumb
-            elif img_url:
-                p["img"]  = img_url
-                p["imgH"] = img_url
-        elif img_url:
-            p["img"]  = img_url
-            p["imgH"] = img_url
+                img_final = thumb or high
+
+        # 4. Fallback: URL directa de Binary
+        if not img_final and img_url:
+            img_final = img_url
+
+        if img_final:
+            p["img"]  = img_final
+            p["imgH"] = img_final
 
         a = extract_attrs(nombre, cat_raw)
         if a: p["a"] = a
@@ -2693,6 +2815,9 @@ def main():
     # Los entries con valor = None  = ya consultado en Icecat, no encontrado → NO reintentar
     # Los entries ausentes           = producto nuevo → consultar Icecat
     img_cache = load_img_cache()
+    binary_img_cache = load_binary_img_cache()
+    _bin_imgs_before = len(binary_img_cache)
+    os.makedirs(IMGS_DIR, exist_ok=True)
     valid  = sum(1 for v in img_cache.values() if v is not None)
     nulls  = sum(1 for v in img_cache.values() if v is None)
 
@@ -2723,7 +2848,7 @@ def main():
     # Megastore sigue descargándose únicamente para actualizar la Zona Apple.
     binary_text = download_binary_csv()
     if binary_text:
-        binary_products = process_binary_csv(binary_text, img_cache)
+        binary_products = process_binary_csv(binary_text, img_cache, binary_img_cache)
         if binary_products:
             products = binary_products  # Tienda = solo Binary
             log(f"  Tienda: usando solo Binary ({len(products)} productos)")
@@ -2738,6 +2863,9 @@ def main():
     # Save updated cache
     save_img_cache(img_cache)
     log(f"  Cache guardado: {len(img_cache)} entradas")
+    save_binary_img_cache(binary_img_cache)
+    _bin_imgs_new = len(binary_img_cache) - _bin_imgs_before
+    log(f"  Imágenes Binary: {len(binary_img_cache)} en cache (+{_bin_imgs_new} nuevas)")
 
     if not update_html(products): sys.exit(1)
 
