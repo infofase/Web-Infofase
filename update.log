@@ -19770,3 +19770,29 @@
 [2026-04-11 19:00:43]   index.html: 39.7MB | tienda: 11869 | Apple: 583
 [2026-04-11 19:00:43] Completado OK
 [2026-04-11 19:00:43] ==================================================
+[2026-04-11 20:00:32] ==================================================
+[2026-04-11 20:00:32] Infofase catalog updater v3 — con imágenes Icecat
+[2026-04-11 20:00:32]   Cache: 1680 con imagen | 2870 sin imagen (no se reintentarán) | total 4550
+[2026-04-11 20:00:32] Descargando https://infofase.com/tienda/megastore.csv
+[2026-04-11 20:00:33]   CSV: 502KB (utf-8-sig)
+[2026-04-11 20:00:33]   Delimitador CSV detectado: ';'
+[2026-04-11 20:00:34]   Procesados: 2899 | descartados: 376
+[2026-04-11 20:00:34]   Imágenes: 1392 con imagen | 935 sin imagen | 572 Apple (skip)
+[2026-04-11 20:00:34]   Icecat: sin productos nuevos — no se realizaron consultas
+[2026-04-11 20:00:34]   Cache: 2327 productos servidos desde cache
+[2026-04-11 20:00:34]   Binary CSV local (binary.csv): 3024KB (latin-1)
+[2026-04-11 20:00:36]   Binary: 11869 productos cargados | 1691 descartados (cat. no IT) | 315 sin precio
+[2026-04-11 20:00:36]   Tienda: usando solo Binary (11869 productos)
+[2026-04-11 20:00:36]   Cache guardado: 4550 entradas
+[2026-04-11 20:00:36]   Imágenes Binary: 11699 en cache (+0 nuevas)
+[2026-04-11 20:00:36]   Modo: web integrada (_TG)
+[2026-04-11 20:00:40]   Tienda: navegación por familias inyectada
+[2026-04-11 20:00:40]   Tienda: patch unidades inyectado (11846 prods con stock/transito)
+[2026-04-11 20:00:40]   ZA: 3275 entradas en CSV para cruzar con Zona Apple
+[2026-04-11 20:00:40]   ZA: 593 productos Apple en catálogo
+[2026-04-11 20:00:40]   ZA DIAG MDE14Y/A: stock_csv=0 viajando_csv=0 → qty=0 via=0 net=0 status=agotado
+[2026-04-11 20:00:40]   ZA: 583/593 actualizados | 10 sin match en CSV
+[2026-04-11 20:00:40]   ZA: patch unidades inyectado (297 prods con stock/transito)
+[2026-04-11 20:00:41]   index.html: 39.7MB | tienda: 11869 | Apple: 583
+[2026-04-11 20:00:41] Completado OK
+[2026-04-11 20:00:41] ==================================================
