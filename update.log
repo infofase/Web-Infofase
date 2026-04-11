@@ -19304,3 +19304,39 @@
 [2026-04-11 02:06:52]   index.html: 39.9MB | tienda: 11869 | Apple: 583
 [2026-04-11 02:06:52] Completado OK
 [2026-04-11 02:06:52] ==================================================
+[2026-04-11 03:00:35] ==================================================
+[2026-04-11 03:00:35] Infofase catalog updater v3 — con imágenes Icecat
+[2026-04-11 03:00:35]   Cache: 1680 con imagen | 2870 sin imagen (no se reintentarán) | total 4550
+[2026-04-11 03:00:35] Descargando https://infofase.com/tienda/megastore.csv
+[2026-04-11 03:00:37]   CSV: 502KB (utf-8-sig)
+[2026-04-11 03:00:37]   Delimitador CSV detectado: ';'
+[2026-04-11 03:00:37]   Procesados: 2899 | descartados: 376
+[2026-04-11 03:00:37]   Imágenes: 1392 con imagen | 935 sin imagen | 572 Apple (skip)
+[2026-04-11 03:00:37]   Icecat: sin productos nuevos — no se realizaron consultas
+[2026-04-11 03:00:37]   Cache: 2327 productos servidos desde cache
+[2026-04-11 03:00:37]   Binary CSV local (binary.csv): 3024KB (latin-1)
+[2026-04-11 03:00:39]   Descargando imágenes Binary: 1/500...
+[2026-04-11 03:01:31]   Descargando imágenes Binary: 51/500...
+[2026-04-11 03:02:19]   Descargando imágenes Binary: 101/500...
+[2026-04-11 03:03:01]   Descargando imágenes Binary: 151/500...
+[2026-04-11 03:03:48]   Descargando imágenes Binary: 201/500...
+[2026-04-11 03:04:32]   Descargando imágenes Binary: 251/500...
+[2026-04-11 03:05:15]   Descargando imágenes Binary: 301/500...
+[2026-04-11 03:06:00]   Descargando imágenes Binary: 351/500...
+[2026-04-11 03:06:44]   Descargando imágenes Binary: 401/500...
+[2026-04-11 03:07:25]   Descargando imágenes Binary: 451/500...
+[2026-04-11 03:08:08]   Binary: 11869 productos cargados | 1691 descartados (cat. no IT) | 315 sin precio
+[2026-04-11 03:08:08]   Tienda: usando solo Binary (11869 productos)
+[2026-04-11 03:08:08]   Cache guardado: 4550 entradas
+[2026-04-11 03:08:08]   Imágenes Binary: 11000 en cache (+500 nuevas)
+[2026-04-11 03:08:09]   Modo: web integrada (_TG)
+[2026-04-11 03:08:12]   Tienda: navegación por familias inyectada
+[2026-04-11 03:08:12]   Tienda: patch unidades inyectado (11846 prods con stock/transito)
+[2026-04-11 03:08:12]   ZA: 3275 entradas en CSV para cruzar con Zona Apple
+[2026-04-11 03:08:12]   ZA: 593 productos Apple en catálogo
+[2026-04-11 03:08:12]   ZA DIAG MDE14Y/A: stock_csv=0 viajando_csv=0 → qty=0 via=0 net=0 status=agotado
+[2026-04-11 03:08:12]   ZA: 583/593 actualizados | 10 sin match en CSV
+[2026-04-11 03:08:12]   ZA: patch unidades inyectado (298 prods con stock/transito)
+[2026-04-11 03:08:13]   index.html: 39.8MB | tienda: 11869 | Apple: 583
+[2026-04-11 03:08:13] Completado OK
+[2026-04-11 03:08:13] ==================================================
