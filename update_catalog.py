@@ -323,6 +323,17 @@ def extract_attrs(name, cat_raw=''):
     stor_val = None; stor_unit = None
     # 1. "512Gb SSD", "1Tb NVMe", "250Gb SATA3"
     m = re.search(r'(\d+(?:[.,]\d+)?)\s*(Tb|Gb)\s*(?:SSD|HDD|NVMe|eMMC|EMMC|NAND|Flash|M\.2|SATA|mSATA|V-NAND)', n, re.I)
+    # 1b. Sin espacio NNN+unit+keyword: "512GbSSD", o sin unidad: "512SSD"
+    if not m: m = re.search(r'(\d+(?:[.,]\d+)?)(Tb|Gb)(?:SSD|HDD|NVMe|eMMC|EMMC|SATA)', n, re.I)
+    # 1c. Dígitos directamente pegados a keyword sin unidad: "512SSD", "256SSD"
+    if not m:
+        _mm = re.search(r'\b(\d+)(?:SSD|HDD|NVMe|eMMC)\b', n, re.I)
+        if _mm:
+            # Crear match sintético que devuelva group(1)=valor, group(2)='Gb'
+            class _FakeMatch:
+                def __init__(self, v): self._v = v
+                def group(self, i): return self._v if i==1 else 'Gb'
+            m = _FakeMatch(_mm.group(1))
     if not m: m = re.search(r'SSD[^\d]*(\d+(?:[.,]\d+)?)\s*(Gb|Tb)', n, re.I)
     if not m: m = re.search(r'NVMe[^\d]*(\d+(?:[.,]\d+)?)\s*(Gb|Tb)', n, re.I)
     # 2. CPU+RAM+storage: "i5 16Gb 512Gb" — segundo número Gb grande
@@ -347,9 +358,9 @@ def extract_attrs(name, cat_raw=''):
         # For phones/tablets: 32GB+ is storage. For laptops: 64GB+ 
         _min_stor = 32 if ('smartphone' in cat or 'iphone' in nl or 'tablet' in cat) else 64
         if stor_gb < _min_stor:   pass  # demasiado pequeño
-        elif stor_gb < 128:    a['almacenamiento'] = '64 GB'
-        elif stor_gb < 256:    a['almacenamiento'] = '128 GB'
-        elif stor_gb < 512:    a['almacenamiento'] = '256 GB'
+        elif stor_gb < 120:    a['almacenamiento'] = '64 GB'
+        elif stor_gb < 380:    a['almacenamiento'] = '256 GB'   # 128/180/240/250/256/300/320 GB
+        elif stor_gb < 650:    a['almacenamiento'] = '512 GB'   # 480/500/512 GB
         elif stor_gb < 900:    a['almacenamiento'] = '512 GB'
         elif stor_gb < 1500:   a['almacenamiento'] = '1 TB'
         elif stor_gb < 2500:   a['almacenamiento'] = '2 TB'
@@ -2815,12 +2826,34 @@ def main():
     # ── Segundo proveedor: Binary Canarias ──────────────────────
     # La tienda online muestra SOLO productos de Binary.
     # Megastore sigue descargándose únicamente para actualizar la Zona Apple.
+    # Guardar portátiles de Megastore/Apple para mezclar con Binary en la tienda
+    _MEGA_CATS_IN_TIENDA = {"portatiles", "tablets"}  # categorías a mezclar
+    _SUB_NORM = {  # normaliza p["s"] al nombre de subfamilia de Binary
+        "macbook": "Portátiles", "portatil": "Portátiles",
+        "ipad": "Tablets Android",  # se mostrará junto a tablets Android
+    }
+    mega_extra = []
+    for _p in products:
+        if _p.get("cat") not in _MEGA_CATS_IN_TIENDA: continue
+        _pc = dict(_p)  # copia para no mutar el original
+        _raw_s = (_pc.get("s") or "").lower()
+        if _raw_s in _SUB_NORM:
+            _pc["s"] = _SUB_NORM[_raw_s]
+        _pc["_src"] = "megastore"
+        mega_extra.append(_pc)
+    log(f"  Megastore portátiles/tablets a mezclar en tienda: {len(mega_extra)}")
+
     binary_text = download_binary_csv()
     if binary_text:
         binary_products = process_binary_csv(binary_text, img_cache)
         if binary_products:
-            products = binary_products  # Tienda = solo Binary
-            log(f"  Tienda: usando solo Binary ({len(products)} productos)")
+            # Mezclar Binary + productos Apple de Megastore
+            # Evitar duplicados por ID (Binary tiene prioridad)
+            binary_ids = {p["id"].lower() for p in binary_products}
+            extra_dedup = [p for p in mega_extra
+                           if p["id"].lower() not in binary_ids]
+            products = binary_products + extra_dedup
+            log(f"  Tienda: {len(binary_products)} Binary + {len(extra_dedup)} Apple/Mega = {len(products)} total")
         else:
             log("  AVISO: Binary CSV sin productos — manteniendo Megastore en tienda")
     else:
