@@ -1535,7 +1535,7 @@ def stock_status_binary(stock_local, stock_prov):
     return 'agotado',  0
 
 
-def process_binary_csv(text, img_cache=None, binary_img_cache=None):
+def process_binary_csv(text, img_cache=None):
     """Procesa el CSV de Binary Canarias y devuelve lista de productos
     con la misma estructura que process_csv() (Megastore).
     Las imágenes vienen directamente de la URL del CSV.
@@ -1556,8 +1556,6 @@ def process_binary_csv(text, img_cache=None, binary_img_cache=None):
         cat_raw = row.get('Categoría', '').strip()
         part_n  = row.get('Part number', '').strip()
         img_url   = row.get('URL imagen', '').strip()
-        icecat_id = row.get('Código Icecat', '').strip()
-
         if not codigo or not nombre:
             continue
 
@@ -1613,37 +1611,10 @@ def process_binary_csv(text, img_cache=None, binary_img_cache=None):
         elif st == "transito" and qty > 0:
             p["tv"]  = qty
 
-        # ── Imagen ─────────────────────────────────────────────────────
-        # Prioridad:
-        #  1. Imagen local descargada (binary_img_cache) → URL relativa "imgs/{id}.jpg"
-        #  2. Icecat CDN público (si tiene Código Icecat válido) → sin auth, sin hotlink
-        #  3. Icecat Live API (si hay credenciales y no tiene código Icecat)
-        #  4. URL directa de Binary (fallback, puede estar bloqueada en navegador)
-        icecat_num = int(icecat_id) if icecat_id.lstrip('-').isdigit() else -1
-
-        img_final = None
-
-        # 1. Imagen local descargada previamente o descarga ahora si es nueva
-        if binary_img_cache is not None and img_url:
-            img_final = download_binary_image(img_url, pid, binary_img_cache)
-
-        # 2. Icecat CDN público (si tiene código Icecat válido y no hay local)
-        if not img_final and icecat_num > 0:
-            img_final = f"https://images.icecat.biz/img/gallery/{icecat_num}_img.jpg"
-
-        # 3. Icecat Live API (productos sin código Icecat)
-        if not img_final and ICECAT_USER and img_cache is not None and icecat_num <= 0:
-            thumb, high = get_icecat_img(marca, pid, img_cache)
-            if thumb or high:
-                img_final = thumb or high
-
-        # 4. Fallback: URL directa de Binary
-        if not img_final and img_url:
-            img_final = img_url
-
-        if img_final:
-            p["img"]  = img_final
-            p["imgH"] = img_final
+        # Imagen: URL directa del CSV de Binary
+        if img_url:
+            p["img"]  = img_url
+            p["imgH"] = img_url
 
         a = extract_attrs(nombre, cat_raw)
         if a: p["a"] = a
@@ -2815,9 +2786,7 @@ def main():
     # Los entries con valor = None  = ya consultado en Icecat, no encontrado → NO reintentar
     # Los entries ausentes           = producto nuevo → consultar Icecat
     img_cache = load_img_cache()
-    binary_img_cache = load_binary_img_cache()
-    _bin_imgs_before = len(binary_img_cache)
-    os.makedirs(IMGS_DIR, exist_ok=True)
+
     valid  = sum(1 for v in img_cache.values() if v is not None)
     nulls  = sum(1 for v in img_cache.values() if v is None)
 
@@ -2848,7 +2817,7 @@ def main():
     # Megastore sigue descargándose únicamente para actualizar la Zona Apple.
     binary_text = download_binary_csv()
     if binary_text:
-        binary_products = process_binary_csv(binary_text, img_cache, binary_img_cache)
+        binary_products = process_binary_csv(binary_text, img_cache)
         if binary_products:
             products = binary_products  # Tienda = solo Binary
             log(f"  Tienda: usando solo Binary ({len(products)} productos)")
@@ -2863,9 +2832,7 @@ def main():
     # Save updated cache
     save_img_cache(img_cache)
     log(f"  Cache guardado: {len(img_cache)} entradas")
-    save_binary_img_cache(binary_img_cache)
-    _bin_imgs_new = len(binary_img_cache) - _bin_imgs_before
-    log(f"  Imágenes Binary: {len(binary_img_cache)} en cache (+{_bin_imgs_new} nuevas)")
+
 
     if not update_html(products): sys.exit(1)
 
