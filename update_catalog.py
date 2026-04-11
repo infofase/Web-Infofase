@@ -2826,22 +2826,20 @@ def main():
     # ── Segundo proveedor: Binary Canarias ──────────────────────
     # La tienda online muestra SOLO productos de Binary.
     # Megastore sigue descargándose únicamente para actualizar la Zona Apple.
-    # Guardar portátiles de Megastore/Apple para mezclar con Binary en la tienda
-    _MEGA_CATS_IN_TIENDA = {"portatiles", "tablets"}  # categorías a mezclar
-    _SUB_NORM = {  # normaliza p["s"] al nombre de subfamilia de Binary
-        "macbook": "Portátiles", "portatil": "Portátiles",
-        "ipad": "Tablets Android",  # se mostrará junto a tablets Android
-    }
+    # Mezclar portátiles Apple (Megastore) en la tienda junto a Binary
+    # SOLO cat="portatiles" con s=MacBook/Portatil → s="Portátiles"
+    # Nunca mezclar tablets, iPads ni accesorios
+    _MEGA_S_PORTABLES = {"macbook", "portatil"}  # prod values → Portátiles
     mega_extra = []
     for _p in products:
-        if _p.get("cat") not in _MEGA_CATS_IN_TIENDA: continue
-        _pc = dict(_p)  # copia para no mutar el original
-        _raw_s = (_pc.get("s") or "").lower()
-        if _raw_s in _SUB_NORM:
-            _pc["s"] = _SUB_NORM[_raw_s]
+        if _p.get("cat") != "portatiles": continue      # solo portátiles
+        _raw_s = (_p.get("s") or "").lower()
+        if _raw_s not in _MEGA_S_PORTABLES: continue    # solo MacBook / Portatil
+        _pc = dict(_p)
+        _pc["s"]    = "Portátiles"   # normalizar subfamilia
         _pc["_src"] = "megastore"
         mega_extra.append(_pc)
-    log(f"  Megastore portátiles/tablets a mezclar en tienda: {len(mega_extra)}")
+    log(f"  Megastore portátiles Apple a mezclar en tienda: {len(mega_extra)}")
 
     binary_text = download_binary_csv()
     if binary_text:
