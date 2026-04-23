@@ -27245,3 +27245,30 @@
 [2026-04-23 17:00:51]   index.html: 41.3MB | tienda: 11989 | Apple: 574
 [2026-04-23 17:00:51] Completado OK
 [2026-04-23 17:00:51] ==================================================
+[2026-04-23 18:00:37] ==================================================
+[2026-04-23 18:00:37] Infofase catalog updater v3 — con imágenes Icecat
+[2026-04-23 18:00:37]   Cache: 1689 con imagen | 2879 sin imagen (no se reintentarán) | total 4568
+[2026-04-23 18:00:37] Descargando https://infofase.com/tienda/megastore.csv
+[2026-04-23 18:00:38]   CSV: 501KB (utf-8-sig)
+[2026-04-23 18:00:38]   Delimitador CSV detectado: ';'
+[2026-04-23 18:00:39]   DIAG HTTP 403 [xiaomi|bhr9970gl]: {"StatusCode":5,"Code":403,"Error":"Forbidden","Message":"You have wrong ip address for access"}
+[2026-04-23 18:00:39]   Procesados: 2889 | descartados: 377
+[2026-04-23 18:00:39]   Imágenes: 1389 con imagen | 936 sin imagen | 564 Apple (skip)
+[2026-04-23 18:00:39]   Icecat: 1 productos NUEVOS consultados en esta ejecución
+[2026-04-23 18:00:39]   Cache: 2324 productos servidos desde cache
+[2026-04-23 18:00:39]   Megastore portátiles Apple a mezclar en tienda: 137
+[2026-04-23 18:00:39]   Binary CSV local (binary.csv): 3024KB (latin-1)
+[2026-04-23 18:00:41]   Binary: 11869 productos cargados | 1691 descartados (cat. no IT) | 315 sin precio
+[2026-04-23 18:00:41]   Tienda: 11869 Binary + 120 Apple/Mega = 11989 total
+[2026-04-23 18:00:41]   Cache guardado: 4569 entradas
+[2026-04-23 18:00:42]   Modo: web integrada (_TG)
+[2026-04-23 18:00:45]   Tienda: navegación por familias inyectada
+[2026-04-23 18:00:45]   Tienda: patch unidades inyectado (11946 prods con stock/transito)
+[2026-04-23 18:00:45]   ZA: 3266 entradas en CSV para cruzar con Zona Apple
+[2026-04-23 18:00:46]   ZA: 593 productos Apple en catálogo
+[2026-04-23 18:00:46]   ZA DIAG MDE14Y/A: stock_csv=0 viajando_csv=0 → qty=0 via=0 net=0 status=agotado
+[2026-04-23 18:00:46]   ZA: 574/593 actualizados | 19 sin match en CSV
+[2026-04-23 18:00:46]   ZA: patch unidades inyectado (295 prods con stock/transito)
+[2026-04-23 18:00:47]   index.html: 41.3MB | tienda: 11989 | Apple: 574
+[2026-04-23 18:00:47] Completado OK
+[2026-04-23 18:00:47] ==================================================
