@@ -40876,3 +40876,33 @@
 [2026-05-15 17:00:46]   index.html: 41.3MB | tienda: 11989 | Apple: 561
 [2026-05-15 17:00:46] Completado OK
 [2026-05-15 17:00:46] ==================================================
+[2026-05-15 18:00:30] ==================================================
+[2026-05-15 18:00:30] Infofase catalog updater v3 — con imágenes Icecat
+[2026-05-15 18:00:30]   Cache: 1702 con imagen | 2901 sin imagen (no se reintentarán) | total 4603
+[2026-05-15 18:00:30] Descargando https://infofase.com/tienda/megastore.csv
+[2026-05-15 18:00:31]   CSV: 497KB (utf-8-sig)
+[2026-05-15 18:00:31]   Delimitador CSV detectado: ';'
+[2026-05-15 18:00:32]   DIAG Icecat [equip|129506]: HTTP 200 | keys=['msg', 'data'] | code=—
+[2026-05-15 18:00:33]   DIAG HTTP 403 [intel|bx8070110100]: {"StatusCode":5,"Code":403,"Error":"Forbidden","Message":"You have wrong ip address for access"}
+[2026-05-15 18:00:33]   DIAG HTTP 404 [indefinida|0142]: {"StatusCode":8,"Code":404,"Error":"Not Found","Message":"The requested product is not present in the Icecat database"}
+[2026-05-15 18:00:33]   DIAG Icecat [level one|geu-0523]: HTTP 200 | keys=['msg', 'data'] | code=—
+[2026-05-15 18:00:33]   Procesados: 2866 | descartados: 375
+[2026-05-15 18:00:33]   Imágenes: 1378 con imagen | 933 sin imagen | 555 Apple (skip)
+[2026-05-15 18:00:33]   Icecat: 4 productos NUEVOS consultados en esta ejecución
+[2026-05-15 18:00:33]   Cache: 2307 productos servidos desde cache
+[2026-05-15 18:00:33]   Megastore portátiles Apple a mezclar en tienda: 138
+[2026-05-15 18:00:34]   Binary CSV local (binary.csv): 3024KB (latin-1)
+[2026-05-15 18:00:35]   Binary: 11869 productos cargados | 1691 descartados (cat. no IT) | 315 sin precio
+[2026-05-15 18:00:35]   Tienda: 11869 Binary + 120 Apple/Mega = 11989 total
+[2026-05-15 18:00:35]   Cache guardado: 4607 entradas
+[2026-05-15 18:00:36]   Modo: web integrada (_TG)
+[2026-05-15 18:00:39]   Tienda: navegación por familias inyectada
+[2026-05-15 18:00:39]   Tienda: patch unidades inyectado (11948 prods con stock/transito)
+[2026-05-15 18:00:40]   ZA: 3241 entradas en CSV para cruzar con Zona Apple
+[2026-05-15 18:00:40]   ZA: 593 productos Apple en catálogo
+[2026-05-15 18:00:40]   ZA DIAG MDE14Y/A: stock_csv=1 viajando_csv=0 → qty=1 via=0 net=1 status=stock
+[2026-05-15 18:00:40]   ZA: 561/593 actualizados | 32 sin match en CSV
+[2026-05-15 18:00:40]   ZA: patch unidades inyectado (319 prods con stock/transito)
+[2026-05-15 18:00:41]   index.html: 41.3MB | tienda: 11989 | Apple: 561
+[2026-05-15 18:00:41] Completado OK
+[2026-05-15 18:00:41] ==================================================
