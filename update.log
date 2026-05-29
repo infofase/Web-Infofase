@@ -49448,3 +49448,31 @@
 [2026-05-29 16:00:52]   index.html: 41.3MB | tienda: 11986 | Apple: 560
 [2026-05-29 16:00:52] Completado OK
 [2026-05-29 16:00:52] ==================================================
+[2026-05-29 17:00:38] ==================================================
+[2026-05-29 17:00:38] Infofase catalog updater v3 — con imágenes Icecat
+[2026-05-29 17:00:38]   Cache: 1714 con imagen | 2908 sin imagen (no se reintentarán) | total 4622
+[2026-05-29 17:00:38] Descargando https://infofase.com/tienda/megastore.csv
+[2026-05-29 17:00:39]   CSV: 499KB (utf-8-sig)
+[2026-05-29 17:00:39]   Delimitador CSV detectado: ';'
+[2026-05-29 17:00:40]   DIAG HTTP 404 [acer|dt.r6web.00c]: {"StatusCode":8,"Code":404,"Error":"Not Found","Message":"The requested product is not present in the Icecat database"}
+[2026-05-29 17:00:42]   DIAG Icecat [fellowes|9169301]: HTTP 200 | keys=['msg', 'data'] | code=—
+[2026-05-29 17:00:42]   Procesados: 2875 | descartados: 378
+[2026-05-29 17:00:42]   Imágenes: 1384 con imagen | 938 sin imagen | 553 Apple (skip)
+[2026-05-29 17:00:42]   Icecat: 2 productos NUEVOS consultados en esta ejecución
+[2026-05-29 17:00:42]   Cache: 2320 productos servidos desde cache
+[2026-05-29 17:00:42]   Megastore portátiles Apple a mezclar en tienda: 135
+[2026-05-29 17:00:42]   Binary CSV local (binary.csv): 3024KB (latin-1)
+[2026-05-29 17:00:44]   Binary: 11869 productos cargados | 1691 descartados (cat. no IT) | 315 sin precio
+[2026-05-29 17:00:44]   Tienda: 11869 Binary + 117 Apple/Mega = 11986 total
+[2026-05-29 17:00:44]   Cache guardado: 4624 entradas
+[2026-05-29 17:00:44]   Modo: web integrada (_TG)
+[2026-05-29 17:00:48]   Tienda: navegación por familias inyectada
+[2026-05-29 17:00:48]   Tienda: patch unidades inyectado (11951 prods con stock/transito)
+[2026-05-29 17:00:48]   ZA: 3253 entradas en CSV para cruzar con Zona Apple
+[2026-05-29 17:00:48]   ZA: 593 productos Apple en catálogo
+[2026-05-29 17:00:48]   ZA DIAG MDE14Y/A: stock_csv=1 viajando_csv=0 → qty=1 via=0 net=1 status=stock
+[2026-05-29 17:00:48]   ZA: 560/593 actualizados | 33 sin match en CSV
+[2026-05-29 17:00:48]   ZA: patch unidades inyectado (340 prods con stock/transito)
+[2026-05-29 17:00:49]   index.html: 41.3MB | tienda: 11986 | Apple: 560
+[2026-05-29 17:00:49] Completado OK
+[2026-05-29 17:00:49] ==================================================
