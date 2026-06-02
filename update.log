@@ -51921,3 +51921,29 @@
 [2026-06-02 15:00:53]   index.html: 41.3MB | tienda: 11986 | Apple: 560
 [2026-06-02 15:00:53] Completado OK
 [2026-06-02 15:00:53] ==================================================
+[2026-06-02 16:00:46] ==================================================
+[2026-06-02 16:00:46] Infofase catalog updater v3 — con imágenes Icecat
+[2026-06-02 16:00:46]   Cache: 1715 con imagen | 2910 sin imagen (no se reintentarán) | total 4625
+[2026-06-02 16:00:46] Descargando https://infofase.com/tienda/megastore.csv
+[2026-06-02 16:00:47]   CSV: 500KB (utf-8-sig)
+[2026-06-02 16:00:47]   Delimitador CSV detectado: ';'
+[2026-06-02 16:00:48]   Procesados: 2876 | descartados: 378
+[2026-06-02 16:00:48]   Imágenes: 1384 con imagen | 939 sin imagen | 553 Apple (skip)
+[2026-06-02 16:00:48]   Icecat: sin productos nuevos — no se realizaron consultas
+[2026-06-02 16:00:48]   Cache: 2323 productos servidos desde cache
+[2026-06-02 16:00:48]   Megastore portátiles Apple a mezclar en tienda: 135
+[2026-06-02 16:00:48]   Binary CSV local (binary.csv): 3024KB (latin-1)
+[2026-06-02 16:00:50]   Binary: 11869 productos cargados | 1691 descartados (cat. no IT) | 315 sin precio
+[2026-06-02 16:00:50]   Tienda: 11869 Binary + 117 Apple/Mega = 11986 total
+[2026-06-02 16:00:50]   Cache guardado: 4625 entradas
+[2026-06-02 16:00:50]   Modo: web integrada (_TG)
+[2026-06-02 16:00:54]   Tienda: navegación por familias inyectada
+[2026-06-02 16:00:54]   Tienda: patch unidades inyectado (11947 prods con stock/transito)
+[2026-06-02 16:00:54]   ZA: 3254 entradas en CSV para cruzar con Zona Apple
+[2026-06-02 16:00:54]   ZA: 593 productos Apple en catálogo
+[2026-06-02 16:00:54]   ZA DIAG MDE14Y/A: stock_csv=1 viajando_csv=0 → qty=1 via=0 net=1 status=stock
+[2026-06-02 16:00:54]   ZA: 560/593 actualizados | 33 sin match en CSV
+[2026-06-02 16:00:54]   ZA: patch unidades inyectado (334 prods con stock/transito)
+[2026-06-02 16:00:55]   index.html: 41.3MB | tienda: 11986 | Apple: 560
+[2026-06-02 16:00:55] Completado OK
+[2026-06-02 16:00:55] ==================================================
