@@ -52363,3 +52363,32 @@
 [2026-06-03 08:00:47]   index.html: 41.3MB | tienda: 11986 | Apple: 560
 [2026-06-03 08:00:47] Completado OK
 [2026-06-03 08:00:47] ==================================================
+[2026-06-03 09:00:37] ==================================================
+[2026-06-03 09:00:37] Infofase catalog updater v3 — con imágenes Icecat
+[2026-06-03 09:00:37]   Cache: 1715 con imagen | 2910 sin imagen (no se reintentarán) | total 4625
+[2026-06-03 09:00:37] Descargando https://infofase.com/tienda/megastore.csv
+[2026-06-03 09:00:38]   CSV: 500KB (utf-8-sig)
+[2026-06-03 09:00:38]   Delimitador CSV detectado: ';'
+[2026-06-03 09:00:39]   DIAG Icecat [asus|90nx0881-m02a50]: HTTP 200 | keys=['msg', 'data'] | code=—
+[2026-06-03 09:00:40]   DIAG Icecat [tp-link|tapo c660 kit]: HTTP 200 | keys=['msg', 'data'] | code=—
+[2026-06-03 09:00:40]   DIAG HTTP 404 [tp-link|tapo p110]: {"StatusCode":8,"Code":404,"Error":"Not Found","Message":"The requested product is not present in the Icecat database"}
+[2026-06-03 09:00:40]   Procesados: 2876 | descartados: 378
+[2026-06-03 09:00:40]   Imágenes: 1385 con imagen | 939 sin imagen | 552 Apple (skip)
+[2026-06-03 09:00:40]   Icecat: 3 productos NUEVOS consultados en esta ejecución
+[2026-06-03 09:00:40]   Cache: 2321 productos servidos desde cache
+[2026-06-03 09:00:40]   Megastore portátiles Apple a mezclar en tienda: 135
+[2026-06-03 09:00:40]   Binary CSV local (binary.csv): 3024KB (latin-1)
+[2026-06-03 09:00:42]   Binary: 11869 productos cargados | 1691 descartados (cat. no IT) | 315 sin precio
+[2026-06-03 09:00:42]   Tienda: 11869 Binary + 117 Apple/Mega = 11986 total
+[2026-06-03 09:00:42]   Cache guardado: 4628 entradas
+[2026-06-03 09:00:42]   Modo: web integrada (_TG)
+[2026-06-03 09:00:46]   Tienda: navegación por familias inyectada
+[2026-06-03 09:00:46]   Tienda: patch unidades inyectado (11946 prods con stock/transito)
+[2026-06-03 09:00:46]   ZA: 3254 entradas en CSV para cruzar con Zona Apple
+[2026-06-03 09:00:46]   ZA: 593 productos Apple en catálogo
+[2026-06-03 09:00:46]   ZA DIAG MDE14Y/A: stock_csv=1 viajando_csv=0 → qty=1 via=0 net=1 status=stock
+[2026-06-03 09:00:46]   ZA: 559/593 actualizados | 34 sin match en CSV
+[2026-06-03 09:00:46]   ZA: patch unidades inyectado (334 prods con stock/transito)
+[2026-06-03 09:00:47]   index.html: 41.3MB | tienda: 11986 | Apple: 559
+[2026-06-03 09:00:47] Completado OK
+[2026-06-03 09:00:47] ==================================================
