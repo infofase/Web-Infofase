@@ -75250,3 +75250,30 @@
 [2026-07-10 10:01:11]   index.html: 41.3MB | tienda: 11976 | Apple: 548
 [2026-07-10 10:01:11] Completado OK
 [2026-07-10 10:01:11] ==================================================
+[2026-07-10 11:01:02] ==================================================
+[2026-07-10 11:01:02] Infofase catalog updater v3 — con imágenes Icecat
+[2026-07-10 11:01:02]   Cache: 1734 con imagen | 2927 sin imagen (no se reintentarán) | total 4661
+[2026-07-10 11:01:02] Descargando https://infofase.com/tienda/megastore.csv
+[2026-07-10 11:01:04]   CSV: 497KB (utf-8-sig)
+[2026-07-10 11:01:04]   Delimitador CSV detectado: ';'
+[2026-07-10 11:01:06]   DIAG Icecat [asus|90nx0881-m03an0]: HTTP 200 | keys=['msg', 'data'] | code=—
+[2026-07-10 11:01:06]   Procesados: 2861 | descartados: 379
+[2026-07-10 11:01:06]   Imágenes: 1369 con imagen | 945 sin imagen | 547 Apple (skip)
+[2026-07-10 11:01:06]   Icecat: 1 productos NUEVOS consultados en esta ejecución
+[2026-07-10 11:01:06]   Cache: 2313 productos servidos desde cache
+[2026-07-10 11:01:06]   Megastore portátiles Apple a mezclar en tienda: 123
+[2026-07-10 11:01:06]   Binary CSV local (binary.csv): 3024KB (latin-1)
+[2026-07-10 11:01:08]   Binary: 11869 productos cargados | 1691 descartados (cat. no IT) | 315 sin precio
+[2026-07-10 11:01:08]   Tienda: 11869 Binary + 108 Apple/Mega = 11977 total
+[2026-07-10 11:01:08]   Cache guardado: 4662 entradas
+[2026-07-10 11:01:08]   Modo: web integrada (_TG)
+[2026-07-10 11:01:12]   Tienda: navegación por familias inyectada
+[2026-07-10 11:01:12]   Tienda: patch unidades inyectado (11941 prods con stock/transito)
+[2026-07-10 11:01:12]   ZA: 3240 entradas en CSV para cruzar con Zona Apple
+[2026-07-10 11:01:12]   ZA: 593 productos Apple en catálogo
+[2026-07-10 11:01:12]   ZA DIAG MDE14Y/A: stock_csv=1 viajando_csv=0 → qty=1 via=0 net=1 status=stock
+[2026-07-10 11:01:12]   ZA: 548/593 actualizados | 45 sin match en CSV
+[2026-07-10 11:01:12]   ZA: patch unidades inyectado (318 prods con stock/transito)
+[2026-07-10 11:01:13]   index.html: 41.3MB | tienda: 11977 | Apple: 548
+[2026-07-10 11:01:13] Completado OK
+[2026-07-10 11:01:13] ==================================================
