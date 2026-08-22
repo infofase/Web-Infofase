@@ -102159,3 +102159,29 @@
 [2026-08-22 22:01:04]   index.html: 41.3MB | tienda: 11977 | Apple: 532
 [2026-08-22 22:01:04] Completado OK
 [2026-08-22 22:01:04] ==================================================
+[2026-08-22 23:00:47] ==================================================
+[2026-08-22 23:00:47] Infofase catalog updater v3 — con imágenes Icecat
+[2026-08-22 23:00:47]   Cache: 1770 con imagen | 2959 sin imagen (no se reintentarán) | total 4729
+[2026-08-22 23:00:47] Descargando https://infofase.com/tienda/megastore.csv
+[2026-08-22 23:00:48]   CSV: 495KB (utf-8-sig)
+[2026-08-22 23:00:48]   Delimitador CSV detectado: ';'
+[2026-08-22 23:00:49]   Procesados: 2852 | descartados: 379
+[2026-08-22 23:00:49]   Imágenes: 1363 con imagen | 956 sin imagen | 533 Apple (skip)
+[2026-08-22 23:00:49]   Icecat: sin productos nuevos — no se realizaron consultas
+[2026-08-22 23:00:49]   Cache: 2319 productos servidos desde cache
+[2026-08-22 23:00:49]   Megastore portátiles Apple a mezclar en tienda: 120
+[2026-08-22 23:00:49]   Binary CSV local (binary.csv): 3024KB (latin-1)
+[2026-08-22 23:00:50]   Binary: 11869 productos cargados | 1691 descartados (cat. no IT) | 315 sin precio
+[2026-08-22 23:00:50]   Tienda: 11869 Binary + 108 Apple/Mega = 11977 total
+[2026-08-22 23:00:50]   Cache guardado: 4729 entradas
+[2026-08-22 23:00:50]   Modo: web integrada (_TG)
+[2026-08-22 23:00:53]   Tienda: navegación por familias inyectada
+[2026-08-22 23:00:53]   Tienda: patch unidades inyectado (11936 prods con stock/transito)
+[2026-08-22 23:00:53]   ZA: 3231 entradas en CSV para cruzar con Zona Apple
+[2026-08-22 23:00:53]   ZA: 593 productos Apple en catálogo
+[2026-08-22 23:00:53]   ZA DIAG MDE14Y/A: stock_csv=1 viajando_csv=0 → qty=1 via=0 net=1 status=stock
+[2026-08-22 23:00:53]   ZA: 532/593 actualizados | 61 sin match en CSV
+[2026-08-22 23:00:53]   ZA: patch unidades inyectado (304 prods con stock/transito)
+[2026-08-22 23:00:54]   index.html: 41.3MB | tienda: 11977 | Apple: 532
+[2026-08-22 23:00:54] Completado OK
+[2026-08-22 23:00:54] ==================================================
