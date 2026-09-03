@@ -109370,3 +109370,29 @@
 [2026-09-03 20:01:05]   index.html: 41.3MB | tienda: 11975 | Apple: 510
 [2026-09-03 20:01:05] Completado OK
 [2026-09-03 20:01:05] ==================================================
+[2026-09-03 21:00:55] ==================================================
+[2026-09-03 21:00:55] Infofase catalog updater v3 — con imágenes Icecat
+[2026-09-03 21:00:55]   Cache: 1773 con imagen | 2966 sin imagen (no se reintentarán) | total 4739
+[2026-09-03 21:00:55] Descargando https://infofase.com/tienda/megastore.csv
+[2026-09-03 21:00:57]   CSV: 494KB (utf-8-sig)
+[2026-09-03 21:00:57]   Delimitador CSV detectado: ';'
+[2026-09-03 21:00:57]   Procesados: 2839 | descartados: 380
+[2026-09-03 21:00:57]   Imágenes: 1359 con imagen | 957 sin imagen | 523 Apple (skip)
+[2026-09-03 21:00:57]   Icecat: sin productos nuevos — no se realizaron consultas
+[2026-09-03 21:00:57]   Cache: 2316 productos servidos desde cache
+[2026-09-03 21:00:57]   Megastore portátiles Apple a mezclar en tienda: 118
+[2026-09-03 21:00:57]   Binary CSV local (binary.csv): 3024KB (latin-1)
+[2026-09-03 21:00:59]   Binary: 11869 productos cargados | 1691 descartados (cat. no IT) | 315 sin precio
+[2026-09-03 21:00:59]   Tienda: 11869 Binary + 106 Apple/Mega = 11975 total
+[2026-09-03 21:00:59]   Cache guardado: 4739 entradas
+[2026-09-03 21:01:00]   Modo: web integrada (_TG)
+[2026-09-03 21:01:03]   Tienda: navegación por familias inyectada
+[2026-09-03 21:01:03]   Tienda: patch unidades inyectado (11925 prods con stock/transito)
+[2026-09-03 21:01:03]   ZA: 3219 entradas en CSV para cruzar con Zona Apple
+[2026-09-03 21:01:03]   ZA: 593 productos Apple en catálogo
+[2026-09-03 21:01:03]   ZA DIAG MDE14Y/A: stock_csv=1 viajando_csv=0 → qty=1 via=0 net=1 status=stock
+[2026-09-03 21:01:03]   ZA: 510/593 actualizados | 83 sin match en CSV
+[2026-09-03 21:01:03]   ZA: patch unidades inyectado (282 prods con stock/transito)
+[2026-09-03 21:01:04]   index.html: 41.3MB | tienda: 11975 | Apple: 510
+[2026-09-03 21:01:04] Completado OK
+[2026-09-03 21:01:04] ==================================================
