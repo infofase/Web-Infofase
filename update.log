@@ -114058,3 +114058,31 @@
 [2026-09-11 09:01:11]   index.html: 41.3MB | tienda: 11975 | Apple: 475
 [2026-09-11 09:01:11] Completado OK
 [2026-09-11 09:01:11] ==================================================
+[2026-09-11 10:00:59] ==================================================
+[2026-09-11 10:00:59] Infofase catalog updater v3 — con imágenes Icecat
+[2026-09-11 10:00:59]   Cache: 1785 con imagen | 2970 sin imagen (no se reintentarán) | total 4755
+[2026-09-11 10:00:59] Descargando https://infofase.com/tienda/megastore.csv
+[2026-09-11 10:01:00]   CSV: 497KB (utf-8-sig)
+[2026-09-11 10:01:00]   Delimitador CSV detectado: ';'
+[2026-09-11 10:01:02]   DIAG HTTP 403 [microsoft|zlb-00037]: {"StatusCode":5,"Code":403,"Error":"Forbidden","Message":"You have wrong ip address for access"}
+[2026-09-11 10:01:03]   DIAG HTTP 403 [microsoft|zlp-00012]: {"StatusCode":5,"Code":403,"Error":"Forbidden","Message":"You have wrong ip address for access"}
+[2026-09-11 10:01:03]   Procesados: 2863 | descartados: 381
+[2026-09-11 10:01:03]   Imágenes: 1369 con imagen | 956 sin imagen | 538 Apple (skip)
+[2026-09-11 10:01:03]   Icecat: 2 productos NUEVOS consultados en esta ejecución
+[2026-09-11 10:01:03]   Cache: 2323 productos servidos desde cache
+[2026-09-11 10:01:03]   Megastore portátiles Apple a mezclar en tienda: 120
+[2026-09-11 10:01:03]   Binary CSV local (binary.csv): 3024KB (latin-1)
+[2026-09-11 10:01:05]   Binary: 11869 productos cargados | 1691 descartados (cat. no IT) | 315 sin precio
+[2026-09-11 10:01:05]   Tienda: 11869 Binary + 108 Apple/Mega = 11977 total
+[2026-09-11 10:01:05]   Cache guardado: 4757 entradas
+[2026-09-11 10:01:05]   Modo: web integrada (_TG)
+[2026-09-11 10:01:09]   Tienda: navegación por familias inyectada
+[2026-09-11 10:01:09]   Tienda: patch unidades inyectado (11922 prods con stock/transito)
+[2026-09-11 10:01:09]   ZA: 3244 entradas en CSV para cruzar con Zona Apple
+[2026-09-11 10:01:09]   ZA: 593 productos Apple en catálogo
+[2026-09-11 10:01:09]   ZA DIAG MDE14Y/A: stock_csv=0 viajando_csv=0 → qty=0 via=0 net=0 status=agotado
+[2026-09-11 10:01:09]   ZA: 475/593 actualizados | 118 sin match en CSV
+[2026-09-11 10:01:09]   ZA: patch unidades inyectado (282 prods con stock/transito)
+[2026-09-11 10:01:10]   index.html: 41.3MB | tienda: 11977 | Apple: 475
+[2026-09-11 10:01:10] Completado OK
+[2026-09-11 10:01:10] ==================================================
