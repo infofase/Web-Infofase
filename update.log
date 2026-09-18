@@ -118440,3 +118440,34 @@
 [2026-09-18 10:02:18]   index.html: 41.3MB | tienda: 11975 | Apple: 473
 [2026-09-18 10:02:18] Completado OK
 [2026-09-18 10:02:18] ==================================================
+[2026-09-18 11:00:56] ==================================================
+[2026-09-18 11:00:56] Infofase catalog updater v3 — con imágenes Icecat
+[2026-09-18 11:00:56]   Cache: 1790 con imagen | 2979 sin imagen (no se reintentarán) | total 4769
+[2026-09-18 11:00:56] Descargando https://infofase.com/tienda/megastore.csv
+[2026-09-18 11:00:58]   CSV: 500KB (utf-8-sig)
+[2026-09-18 11:00:58]   Delimitador CSV detectado: ';'
+[2026-09-18 11:00:59]   DIAG HTTP 403 [thermaltake|ca-11g-00m6wn-00]: {"StatusCode":5,"Code":403,"Error":"Forbidden","Message":"You have wrong ip address for access"}
+[2026-09-18 11:00:59]   DIAG HTTP 403 [thermaltake|ca-11g-00m1wn-00]: {"StatusCode":5,"Code":403,"Error":"Forbidden","Message":"You have wrong ip address for access"}
+[2026-09-18 11:01:00]   DIAG HTTP 403 [thermaltake|ps-tpd-1200fnfage-4]: {"StatusCode":5,"Code":403,"Error":"Forbidden","Message":"You have wrong ip address for access"}
+[2026-09-18 11:01:00]   DIAG HTTP 403 [thermaltake|ps-tpt-0850fnfage-3]: {"StatusCode":5,"Code":403,"Error":"Forbidden","Message":"You have wrong ip address for access"}
+[2026-09-18 11:01:01]   DIAG HTTP 403 [thermaltake|ps-tpt-0850fnfage-w]: {"StatusCode":5,"Code":403,"Error":"Forbidden","Message":"You have wrong ip address for access"}
+[2026-09-18 11:01:01]   Procesados: 2883 | descartados: 382
+[2026-09-18 11:01:01]   Imágenes: 1367 con imagen | 966 sin imagen | 550 Apple (skip)
+[2026-09-18 11:01:01]   Icecat: 6 productos NUEVOS consultados en esta ejecución
+[2026-09-18 11:01:01]   Cache: 2327 productos servidos desde cache
+[2026-09-18 11:01:01]   Megastore portátiles Apple a mezclar en tienda: 115
+[2026-09-18 11:01:01]   Binary CSV local (binary.csv): 3024KB (latin-1)
+[2026-09-18 11:01:03]   Binary: 11869 productos cargados | 1691 descartados (cat. no IT) | 315 sin precio
+[2026-09-18 11:01:03]   Tienda: 11869 Binary + 106 Apple/Mega = 11975 total
+[2026-09-18 11:01:03]   Cache guardado: 4775 entradas
+[2026-09-18 11:01:04]   Modo: web integrada (_TG)
+[2026-09-18 11:01:07]   Tienda: navegación por familias inyectada
+[2026-09-18 11:01:07]   Tienda: patch unidades inyectado (11929 prods con stock/transito)
+[2026-09-18 11:01:07]   ZA: 3265 entradas en CSV para cruzar con Zona Apple
+[2026-09-18 11:01:08]   ZA: 593 productos Apple en catálogo
+[2026-09-18 11:01:08]   ZA DIAG MDE14Y/A: stock_csv=1 viajando_csv=0 → qty=1 via=0 net=1 status=stock
+[2026-09-18 11:01:08]   ZA: 473/593 actualizados | 120 sin match en CSV
+[2026-09-18 11:01:08]   ZA: patch unidades inyectado (298 prods con stock/transito)
+[2026-09-18 11:01:09]   index.html: 41.3MB | tienda: 11975 | Apple: 473
+[2026-09-18 11:01:09] Completado OK
+[2026-09-18 11:01:09] ==================================================
