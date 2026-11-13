@@ -153412,3 +153412,37 @@
 [2026-11-13 14:00:58]   index.html: 41.3MB | tienda: 11992 | Apple: 382
 [2026-11-13 14:00:58] Completado OK
 [2026-11-13 14:00:58] ==================================================
+[2026-11-13 15:00:52] ==================================================
+[2026-11-13 15:00:52] Infofase catalog updater v3 — con imágenes Icecat
+[2026-11-13 15:00:52]   Cache: 1827 con imagen | 3028 sin imagen (no se reintentarán) | total 4855
+[2026-11-13 15:00:52] Descargando https://infofase.com/tienda/megastore.csv
+[2026-11-13 15:00:53]   CSV: 508KB (utf-8-sig)
+[2026-11-13 15:00:53]   Delimitador CSV detectado: ';'
+[2026-11-13 15:00:54]   DIAG HTTP 404 [gigabyte|9vn507teo-00-g10]: {"StatusCode":8,"Code":404,"Error":"Not Found","Message":"The requested product is not present in the Icecat database"}
+[2026-11-13 15:00:54]   DIAG HTTP 404 [zotac|zt-b5050q-10m]: {"StatusCode":8,"Code":404,"Error":"Not Found","Message":"The requested product is not present in the Icecat database"}
+[2026-11-13 15:00:55]   DIAG HTTP 404 [gigabyte|gv-n5060wf2max ocv2-8gd g10]: {"StatusCode":8,"Code":404,"Error":"Not Found","Message":"The requested product is not present in the Icecat database"}
+[2026-11-13 15:00:55]   DIAG Icecat [samsung|ue50u8072huxxh]: HTTP 200 | keys=['msg', 'data'] | code=—
+[2026-11-13 15:00:56]   DIAG Icecat [samsung|tq65q7faauxxc]: HTTP 200 | keys=['msg', 'data'] | code=—
+[2026-11-13 15:00:56]   DIAG Icecat [samsung|ue65u8092huxxh]: HTTP 200 | keys=['msg', 'data'] | code=—
+[2026-11-13 15:00:59]   DIAG HTTP 404 [motoirola|pb6l0057it]: {"StatusCode":8,"Code":404,"Error":"Not Found","Message":"The requested product is not present in the Icecat database"}
+[2026-11-13 15:01:00]   DIAG HTTP 403 [xiaomi|bhr09cxgl]: {"StatusCode":5,"Code":403,"Error":"Forbidden","Message":"You have wrong ip address for access"}
+[2026-11-13 15:01:06]   Procesados: 2906 | descartados: 389
+[2026-11-13 15:01:06]   Imágenes: 1368 con imagen | 970 sin imagen | 568 Apple (skip)
+[2026-11-13 15:01:06]   Icecat: 24 productos NUEVOS consultados en esta ejecución
+[2026-11-13 15:01:06]   Cache: 2314 productos servidos desde cache
+[2026-11-13 15:01:06]   Megastore portátiles Apple a mezclar en tienda: 130
+[2026-11-13 15:01:06]   Binary CSV local (binary.csv): 3024KB (latin-1)
+[2026-11-13 15:01:07]   Binary: 11869 productos cargados | 1691 descartados (cat. no IT) | 315 sin precio
+[2026-11-13 15:01:07]   Tienda: 11869 Binary + 125 Apple/Mega = 11994 total
+[2026-11-13 15:01:07]   Cache guardado: 4879 entradas
+[2026-11-13 15:01:08]   Modo: web integrada (_TG)
+[2026-11-13 15:01:11]   Tienda: navegación por familias inyectada
+[2026-11-13 15:01:11]   Tienda: patch unidades inyectado (11946 prods con stock/transito)
+[2026-11-13 15:01:11]   ZA: 3295 entradas en CSV para cruzar con Zona Apple
+[2026-11-13 15:01:11]   ZA: 593 productos Apple en catálogo
+[2026-11-13 15:01:11]   ZA DIAG MDE14Y/A: stock_csv=1 viajando_csv=0 → qty=1 via=0 net=1 status=stock
+[2026-11-13 15:01:11]   ZA: 382/593 actualizados | 211 sin match en CSV
+[2026-11-13 15:01:11]   ZA: patch unidades inyectado (301 prods con stock/transito)
+[2026-11-13 15:01:12]   index.html: 41.3MB | tienda: 11994 | Apple: 382
+[2026-11-13 15:01:12] Completado OK
+[2026-11-13 15:01:12] ==================================================
