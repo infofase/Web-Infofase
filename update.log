@@ -157151,3 +157151,33 @@
 [2026-11-19 16:00:58]   index.html: 41.3MB | tienda: 11993 | Apple: 374
 [2026-11-19 16:00:58] Completado OK
 [2026-11-19 16:00:58] ==================================================
+[2026-11-19 17:00:52] ==================================================
+[2026-11-19 17:00:52] Infofase catalog updater v3 — con imágenes Icecat
+[2026-11-19 17:00:52]   Cache: 1845 con imagen | 3038 sin imagen (no se reintentarán) | total 4883
+[2026-11-19 17:00:52] Descargando https://infofase.com/tienda/megastore.csv
+[2026-11-19 17:00:53]   CSV: 506KB (utf-8-sig)
+[2026-11-19 17:00:53]   Delimitador CSV detectado: ';'
+[2026-11-19 17:00:55]   DIAG Icecat [acer|um.qx2ee.034]: HTTP 200 | keys=['msg', 'data'] | code=—
+[2026-11-19 17:00:55]   DIAG Icecat [acer|um.hx2ee.046]: HTTP 200 | keys=['msg', 'data'] | code=—
+[2026-11-19 17:00:55]   DIAG Icecat [acer|um.qb7ee.608]: HTTP 200 | keys=['msg', 'data'] | code=—
+[2026-11-19 17:00:55]   DIAG HTTP 403 [pny|vcg5060t16dfxpb1-o]: {"StatusCode":5,"Code":403,"Error":"Forbidden","Message":"You have wrong ip address for access"}
+[2026-11-19 17:00:56]   DIAG HTTP 403 [lexar|ld5s16g56c46st-hgn]: {"StatusCode":5,"Code":403,"Error":"Forbidden","Message":"You have wrong ip address for access"}
+[2026-11-19 17:00:56]   Procesados: 2897 | descartados: 389
+[2026-11-19 17:00:56]   Imágenes: 1374 con imagen | 961 sin imagen | 562 Apple (skip)
+[2026-11-19 17:00:56]   Icecat: 6 productos NUEVOS consultados en esta ejecución
+[2026-11-19 17:00:56]   Cache: 2329 productos servidos desde cache
+[2026-11-19 17:00:56]   Megastore portátiles Apple a mezclar en tienda: 129
+[2026-11-19 17:00:56]   Binary CSV local (binary.csv): 3024KB (latin-1)
+[2026-11-19 17:00:58]   Binary: 11869 productos cargados | 1691 descartados (cat. no IT) | 315 sin precio
+[2026-11-19 17:00:58]   Tienda: 11869 Binary + 124 Apple/Mega = 11993 total
+[2026-11-19 17:00:58]   Cache guardado: 4889 entradas
+[2026-11-19 17:00:58]   Modo: web integrada (_TG)
+[2026-11-19 17:01:01]   Tienda: navegación por familias inyectada
+[2026-11-19 17:01:01]   Tienda: patch unidades inyectado (11936 prods con stock/transito)
+[2026-11-19 17:01:02]   ZA: 3286 entradas en CSV para cruzar con Zona Apple
+[2026-11-19 17:01:02]   ZA: 593 productos Apple en catálogo
+[2026-11-19 17:01:02]   ZA: 374/593 actualizados | 219 sin match en CSV
+[2026-11-19 17:01:02]   ZA: patch unidades inyectado (296 prods con stock/transito)
+[2026-11-19 17:01:03]   index.html: 41.3MB | tienda: 11993 | Apple: 374
+[2026-11-19 17:01:03] Completado OK
+[2026-11-19 17:01:03] ==================================================
