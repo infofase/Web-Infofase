@@ -48,7 +48,12 @@ def log(msg):
 # ── CSV download ──────────────────────────────────────────────
 def download_csv():
     log(f"Descargando {CSV_URL}")
-    req = Request(CSV_URL, headers={"User-Agent": "Infofase-Bot/3.0"})
+    # UA de navegador: el servidor devuelve 403 al UA "Infofase-Bot/3.0" (desde 23/11/2026)
+    req = Request(CSV_URL, headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "Accept": "text/csv,text/plain,*/*",
+        "Accept-Language": "es-ES,es;q=0.9",
+    })
     try:
         with urlopen(req, timeout=30) as r:
             raw = r.read()
